@@ -24,12 +24,42 @@
   let octave = 4;
 
   // ---------- audio ----------
-  let ctx = null, node = null, analyser = null, starting = null, board = null, looper = null;
-  function startAudio() {
+  let ctx = null, node = null, analyser = null, starting = null, board = null, looper = null, tickTimer = null;
+  // Chromium honours a numeric latencyHint (0 = smallest buffer the device allows, several times
+  // less delay than 'interactive'); other browsers get the standard low-latency setting.
+  const isChromium = !!(navigator.userAgentData && navigator.userAgentData.brands.some((b) => /Chromium/.test(b.brand)));
+  function makeContext(hint) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    try { return new AC({ latencyHint: hint }); } catch { return new AC(); }
+  }
+  // Every tap/click/key press may resume audio: browsers start or re-suspend the audio
+  // context outside a user gesture (first touch on phones, calls, tab switches on iOS).
+  function wake() {
+    if (ctx && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {});
+  }
+  function updatePower() {
+    const on = ctx && ctx.state === 'running';
+    const btn = $('#power');
+    btn.textContent = !ctx ? 'Start audio' : on ? 'Sound on' : 'Tap for sound';
+    document.body.classList.toggle('powered', !!on);
+  }
+  // If the clock does not move after starting, rebuild the context with the default buffer.
+  function watchdog(c, hint) {
+    const t0 = c.currentTime;
+    setTimeout(() => {
+      if (c !== ctx || c.state !== 'running' || c.currentTime > t0) return;
+      if (hint !== 'interactive') { c.close(); ctx = null; starting = null; startAudio('interactive'); }
+    }, 700);
+  }
+  function startAudio(hint = isChromium ? 0 : 'interactive') {
+    wake();
     if (starting) return starting;
+    // iPhone: play through the ringer/silent switch like a music app.
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* unsupported */ }
     starting = (async () => {
-      // latencyHint 0 asks for the smallest buffer the device allows ('interactive' was ~4x larger here).
-      ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 0 });
+      ctx = makeContext(hint);
+      ctx.onstatechange = updatePower;
+      if (ctx.state !== 'running') ctx.resume().catch(() => {});
       const src = '(' + mooglabDSP.toString() + ')();';
       let out;
       try {
@@ -54,17 +84,16 @@
         onChange: renderLooper,
       });
       Object.assign(looper.state, looperPrefs);
-      setInterval(() => looper.tick(), 25);
+      if (!tickTimer) tickTimer = setInterval(() => looper && looper.tick(), 25);
       sendParams();
-      document.body.classList.add('powered');
-      $('#power').textContent = 'Audio on';
-      showLatency(out instanceof AudioWorkletNode ? 0 : 256 / ctx.sampleRate);
+      updatePower();
+      watchdog(ctx, hint);
+      showLatency(out instanceof AudioWorkletNode ? 0 : FALLBACK_BUFFER / ctx.sampleRate);
     })().catch((err) => {
       starting = null;
       $('#power').textContent = 'Audio failed — retry';
       toast('Could not start audio (' + err.message + '). Try a recent Chrome, Edge, Firefox or Safari.');
     });
-    if (ctx && ctx.state === 'suspended') ctx.resume();
     return starting;
   }
   async function workletNode(src) {
@@ -79,10 +108,12 @@
     node = { port: w.port };
     return w;
   }
+  // Main-thread fallback buffer: 512 samples (~11 ms) is low delay without starving on busy devices.
+  const FALLBACK_BUFFER = 512;
   function scriptNode() {
     mooglabDSP();
     const rack = new globalThis.MooglabRack(ctx.sampleRate);
-    const sp = ctx.createScriptProcessor(256, 0, 2); // smallest buffer = least delay (~5 ms)
+    const sp = ctx.createScriptProcessor(FALLBACK_BUFFER, 0, 2);
     sp.onaudioprocess = (e) => {
       const l = e.outputBuffer.getChannelData(0);
       rack.render(l, Math.round(e.playbackTime * ctx.sampleRate));
@@ -646,7 +677,8 @@
     looperUI();
     $('#hold').addEventListener('click', () => { setSustain(!sustain); });
     $('#mod-wheel').value = patch.modWheel;
-    $('#power').addEventListener('click', () => { startAudio(); if (ctx) ctx.resume(); });
+    $('#power').addEventListener('click', () => startAudio());
+    for (const ev of ['pointerup', 'touchend', 'keydown', 'click']) document.addEventListener(ev, wake, true);
     $('#reset').addEventListener('click', resetPatch);
     $('#prev-level').addEventListener('click', () => goLevel(level - 1));
     $('#next-level').addEventListener('click', () => goLevel(level + 1));
