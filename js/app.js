@@ -28,7 +28,8 @@
   function startAudio() {
     if (starting) return starting;
     starting = (async () => {
-      ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+      // latencyHint 0 asks for the smallest buffer the device allows ('interactive' was ~4x larger here).
+      ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 0 });
       const src = '(' + mooglabDSP.toString() + ')();';
       let out;
       try {
@@ -57,6 +58,7 @@
       sendParams();
       document.body.classList.add('powered');
       $('#power').textContent = 'Audio on';
+      showLatency(out instanceof AudioWorkletNode ? 0 : 256 / ctx.sampleRate);
     })().catch((err) => {
       starting = null;
       $('#power').textContent = 'Audio failed — retry';
@@ -80,7 +82,7 @@
   function scriptNode() {
     mooglabDSP();
     const rack = new globalThis.MooglabRack(ctx.sampleRate);
-    const sp = ctx.createScriptProcessor(1024, 0, 2);
+    const sp = ctx.createScriptProcessor(256, 0, 2); // smallest buffer = least delay (~5 ms)
     sp.onaudioprocess = (e) => {
       const l = e.outputBuffer.getChannelData(0);
       rack.render(l, Math.round(e.playbackTime * ctx.sampleRate));
@@ -90,6 +92,17 @@
     node = { port: { postMessage: (m) => rack.message(m) } };
     window.__mooglabKeep = sp; // keep the node alive
     return sp;
+  }
+  // Delay from key press to sound: browser + device buffers (+ fallback buffer).
+  function showLatency(extra) {
+    const ms = Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0) + extra) * 1000);
+    const el = $('#latency');
+    el.textContent = ms ? `${ms} ms delay` : '';
+    el.classList.toggle('high', ms > 60);
+    el.title = ms > 60
+      ? 'High audio delay: Bluetooth headphones/speakers add 100–250 ms. Wired headphones or built-in speakers play much faster.'
+      : 'Time from key press to sound';
+    if (ms > 60) toast('Audio delay is ' + ms + ' ms — Bluetooth audio adds a lot; wired headphones or built-in speakers are faster.');
   }
   const send = (m) => node && node.port.postMessage(m);
   const sendParams = () => send({ type: 'params', p: synthOf(patch) });

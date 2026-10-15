@@ -22,7 +22,7 @@ function createPedalboard(ctx) {
   const curve = new Float32Array(2048);
   for (let i = 0; i < curve.length; i++) curve[i] = Math.tanh((i / (curve.length - 1)) * 2 - 1) / Math.tanh(1);
   shaper.curve = curve;
-  shaper.oversample = '4x';
+  shaper.oversample = '2x';
   const driveTone = ctx.createBiquadFilter();
   driveTone.type = 'lowpass';
   const driveLevel = ctx.createGain();
@@ -73,18 +73,21 @@ function createPedalboard(ctx) {
   }
   let irTimer = null;
 
-  // --- Output limiter keeps loud stacks (and long echoes) from clipping
-  const limiter = ctx.createDynamicsCompressor();
-  limiter.threshold.value = -6;
-  limiter.knee.value = 6;
-  limiter.ratio.value = 12;
-  limiter.attack.value = 0.003;
-  limiter.release.value = 0.15;
+  // --- Output soft clipper keeps loud stacks (and long echoes) from clipping.
+  // A waveshaper adds no delay (a DynamicsCompressor looks ahead ~6 ms).
+  const limitIn = ctx.createGain();
+  limitIn.gain.value = 0.5;
+  const limiter = ctx.createWaveShaper();
+  const lc = new Float32Array(4096);
+  for (let i = 0; i < lc.length; i++) lc[i] = Math.tanh(4 * (i / (lc.length - 1)) - 2); // y = tanh(x), |x| <= 2
+  limiter.curve = lc;
+  limiter.oversample = 'none';
+  limitIn.connect(limiter);
 
   drive.output.connect(chorus.input);
   chorus.output.connect(echo.input);
   echo.output.connect(reverb.input);
-  reverb.output.connect(limiter);
+  reverb.output.connect(limitIn);
 
   function update(p) {
     // Overdrive replaces the dry signal; the others add their wet signal on top.

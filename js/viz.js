@@ -1,6 +1,8 @@
 /* Visualizations: oscilloscope, spectrum, filter response (analytic ladder model), contours. */
 const Viz = (() => {
-  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  // Theme colours are fixed, so read each CSS variable once instead of every frame.
+  const cssCache = {};
+  const css = (name) => cssCache[name] || (cssCache[name] = getComputedStyle(document.documentElement).getPropertyValue(name).trim());
 
   function setup(canvas) {
     const dpr = window.devicePixelRatio || 1;
