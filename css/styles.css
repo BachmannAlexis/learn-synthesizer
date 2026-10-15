@@ -28,7 +28,7 @@ body {
   color: var(--text);
   font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   min-height: 100vh;
-  padding-bottom: 190px; /* room for fixed keyboard */
+  padding-bottom: var(--kb-h, 190px); /* room for the fixed keyboard (measured in JS) */
 }
 button, select {
   font: inherit;
@@ -100,7 +100,8 @@ kbd {
   padding: 20px;
   align-items: start;
 }
-.lesson {
+.col-lesson, .col-synth { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.card {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -108,7 +109,13 @@ kbd {
 }
 .kicker { margin: 0; color: var(--accent); font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; }
 .lesson h1 { margin: 2px 0 10px; font: 700 26px/1.2 Georgia, serif; }
-.lesson h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 20px 0 8px; }
+.card h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 20px 0 8px; }
+.tasks h2 { margin-top: 0; }
+.lesson-more summary {
+  cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600;
+  padding: 6px 0; list-style-position: inside;
+}
+.lesson-more[open] summary { margin-bottom: 6px; }
 .theory p { margin: 0 0 10px; }
 .theory ul, .tips { padding-left: 18px; margin: 0 0 10px; }
 .theory li, .tips li { margin-bottom: 5px; }
@@ -126,7 +133,7 @@ kbd {
 .link { background: none; border: none; color: var(--muted); font-size: 12px; padding: 10px 0 0; text-decoration: underline; }
 
 /* ---------- signal flow ---------- */
-.flow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; align-items: stretch; }
+.flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
 .flow > div {
   position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -155,7 +162,10 @@ kbd {
   display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
   background: var(--panel); padding: 10px 12px 0;
 }
-.presets { display: flex; gap: 8px; margin-right: auto; flex-wrap: wrap; }
+.presets { display: flex; gap: 8px; flex-wrap: wrap; }
+.panel-hint { margin: 0 auto 0 0; align-self: center; color: var(--muted); font-size: 12px; }
+.presets:not([hidden]) + .panel-hint { display: none; }
+.presets { margin-right: auto; }
 .presets select { max-width: 220px; }
 .save-form { display: flex; gap: 6px; }
 .save-form input {
@@ -204,13 +214,13 @@ kbd {
 .choice-btns { display: flex; gap: 3px; justify-content: center; }
 .choice-btns button {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: 4px 6px; font-size: 10px; min-width: 38px; background: #0d0c0b;
+  justify-content: center; padding: 4px 6px; font-size: 10px; min-width: 40px; min-height: 36px; background: #0d0c0b;
 }
 .choice-btns button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: #26180e; }
 .wave-ico { width: 24px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 
 /* ---------- visualizers ---------- */
-.viz-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 16px; }
+.viz-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
 .viz { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px 10px; }
 .viz[hidden] { display: none; }
 .viz figcaption { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: flex; justify-content: space-between; gap: 8px; }
@@ -232,13 +242,13 @@ kbd {
 .wheel { display: flex; flex-direction: column; align-items: center; font-size: 10px; text-transform: uppercase; color: var(--text); }
 .wheel input {
   writing-mode: vertical-lr; direction: rtl;
-  width: 26px; height: 92px; margin: 0;
+  width: 28px; height: clamp(56px, 12vh, 92px); margin: 0;
   accent-color: var(--accent);
 }
 .octave { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: 12px; }
-.octave button { padding: 2px 6px; font-size: 11px; }
+.octave button { padding: 4px 8px; font-size: 12px; min-height: 32px; }
 .note-readout { font: 12px ui-monospace, Menlo, monospace; color: var(--trace); text-align: center; }
-.keyboard { position: relative; flex: 1; height: 150px; touch-action: none; user-select: none; }
+.keyboard { position: relative; flex: 1; height: clamp(84px, 19vh, 150px); touch-action: none; user-select: none; }
 .key { position: absolute; top: 0; border-radius: 0 0 5px 5px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 6px; font-size: 10px; }
 .key.white { height: 100%; background: linear-gradient(#f4efe4, #e2dacb); border: 1px solid #5d544a; color: #6a5f50; z-index: 1; }
 .key.black { height: 62%; background: linear-gradient(#2a2622, #0b0a09); border: 1px solid #000; color: #9a8f80; z-index: 2; }
@@ -249,33 +259,56 @@ kbd {
 
 /* ---------- toast ---------- */
 .toast {
-  position: fixed; left: 50%; top: 18px; transform: translate(-50%, -150%);
+  position: fixed; left: 50%; top: calc(18px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -200%); visibility: hidden;
   background: var(--good); color: #1d1503; font-weight: 600;
   padding: 10px 18px; border-radius: 8px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
-  transition: transform 0.35s; z-index: 10; max-width: calc(100% - 32px);
+  transition: transform 0.35s, visibility 0s 0.35s; z-index: 10; max-width: calc(100% - 32px);
 }
-.toast.show { transform: translate(-50%, 0); }
+.toast.show { transform: translate(-50%, 0); visibility: visible; transition: transform 0.35s; }
+@media (prefers-reduced-motion: reduce) { .toast, .toast.show, .bar i, .flow > div { transition: none; } }
 
 /* ---------- responsive ---------- */
-@media (max-width: 1100px) {
-  .levels { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1180px) {
+  .tag { display: none; }
+  .lv-text small { display: none; }
+  .level-tab { gap: 6px; }
 }
 @media (max-width: 860px) {
-  .layout { grid-template-columns: minmax(0, 1fr); padding: 16px; }
-  .tag { display: none; }
-  .topbar { padding: 10px 16px; }
+  /* One column: lesson intro, then the synth, then challenges, then the scopes. */
+  .layout { display: flex; flex-direction: column; align-items: stretch; gap: 14px; padding: 14px max(16px, env(safe-area-inset-right, 0px)) 14px max(16px, env(safe-area-inset-left, 0px)); }
+  .col-lesson, .col-synth { display: contents; }
+  .lesson { order: 1; }
+  .flow { order: 2; }
+  .case { order: 3; }
+  .tasks { order: 4; }
+  .viz-grid { order: 5; }
+  .topbar, .levels { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .lesson h1 { font-size: 22px; margin-bottom: 4px; }
+  .panel-hint { display: none; }
 }
-@media (max-width: 560px) {
-  .levels { grid-template-columns: repeat(6, minmax(0, 1fr)); padding: 8px 16px; }
+@media (max-width: 700px) {
+  .levels { padding-top: 8px; padding-bottom: 8px; }
   .lv-text { display: none; }
   .level-tab { justify-content: center; }
+}
+@media (max-width: 560px) {
   .progress .bar { width: 60px; }
-  .keys-left { width: 92px; }
-  .octave { font-size: 10px; }
-  .octave button { padding: 2px 4px; }
-  .wheel input { height: 70px; }
-  .keyboard { height: 120px; }
-  body { padding-bottom: 160px; }
+  .keys-left { width: 112px; }
+  .octave { font-size: 11px; gap: 2px; }
+  .octave button { padding: 4px 8px; min-width: 32px; }
+  .kbd-hint, .note-readout { display: none; }
   .knob { width: 64px; }
   .choice-btns { display: grid; grid-template-columns: repeat(3, auto); }
+  .case { padding: 0 8px; }
+  .panel { padding: 8px; }
+}
+/* Short screens (landscape phones, small laptops): slim keyboard strip. */
+@media (max-height: 560px) {
+  .keys-area { padding-top: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .keys-left { flex-direction: row; align-items: center; width: auto; }
+  .octave { flex-direction: column; }
+  .note-readout, .wheel span { display: none; }
+  .keyboard { height: 84px; }
+  .wheel input { height: 72px; }
+  .key em { display: none; }
 }

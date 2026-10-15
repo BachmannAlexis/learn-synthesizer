@@ -31,11 +31,18 @@ const Viz = (() => {
     g.fillText(text, x, y);
   }
 
+  function idle(g, w, h) {
+    g.fillStyle = css('--muted');
+    g.font = '13px system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.fillText('Play a key to see the sound', w / 2, h / 2 + 4);
+  }
+
   const timeBuf = new Float32Array(4096);
   function scope(canvas, analyser) {
     const { g, w, h } = setup(canvas);
     grid(g, w, h, [w / 4, w / 2, 3 * w / 4], [h / 4, h / 2, 3 * h / 4]);
-    if (!analyser) return;
+    if (!analyser) return idle(g, w, h);
     analyser.getFloatTimeDomainData(timeBuf);
     // Trigger on a rising zero crossing so the wave stands still.
     let start = 0;
@@ -65,7 +72,7 @@ const Viz = (() => {
     const dy = (db) => h - ((db - dbMin) / (dbMax - dbMin)) * h;
     grid(g, w, h, freqTicks.map((f) => fx(f, w)), [-80, -60, -40, -20].map(dy));
     freqTicks.forEach((f) => label(g, f >= 1000 ? f / 1000 + 'k' : f, fx(f, w) + 3, h - 4));
-    if (!analyser) return;
+    if (!analyser) return idle(g, w, h);
     if (!freqBuf || freqBuf.length !== analyser.frequencyBinCount) freqBuf = new Float32Array(analyser.frequencyBinCount);
     analyser.getFloatFrequencyData(freqBuf);
     const binHz = sampleRate / analyser.fftSize;

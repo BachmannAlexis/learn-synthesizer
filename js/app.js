@@ -139,7 +139,7 @@
     });
     el.addEventListener('pointermove', (e) => {
       if (!el.hasPointerCapture(e.pointerId)) return;
-      const sens = e.shiftKey ? 0.0015 : 0.006;
+      const sens = e.shiftKey ? 0.001 : 0.004; // ~250 px for a full sweep
       setNorm(startN + (startY - e.clientY) * sens);
     });
     el.addEventListener('pointerup', () => el.classList.remove('active'));
@@ -247,6 +247,8 @@
     $('#lesson-title').textContent = L.title;
     $('#lesson-theory').innerHTML = L.theory;
     $('#lesson-tips').innerHTML = L.tips.map((t) => `<li>${t}</li>`).join('');
+    // On phones the lesson text starts folded so the synth is reachable without a long scroll.
+    $('#lesson-more').open = !window.matchMedia('(max-width: 860px)').matches;
     renderChallenges();
     // signal flow
     $$('#flow [data-block]').forEach((b) => b.classList.toggle('on', L.flow.includes(b.dataset.block) || (b.dataset.block === 'vco' && L.flow.includes('vco3'))));
@@ -306,7 +308,7 @@
     buildLevelNav();
     sendParams();
     $('#mod-wheel').value = patch.modWheel;
-    $('.lesson').scrollTop = 0;
+    window.scrollTo({ top: 0 });
   }
 
   function resetPatch() {
@@ -357,10 +359,10 @@
   function buildKeyboard() {
     const kb = $('#keyboard');
     kb.innerHTML = '';
-    // Three octaves on wide screens (starting one below), one and a half on phones.
-    const narrow = window.innerWidth < 700;
-    const first = 12 * (octave + 1) - (narrow ? 0 : 12);
-    const last = first + (narrow ? 17 : 36);
+    // Three octaves on wide screens (starting one below), fewer and wider keys on phones.
+    const size = keyboardSize();
+    const first = 12 * (octave + 1) - (size === 'wide' ? 12 : 0);
+    const last = first + { wide: 36, mid: 17, small: 12 }[size];
     const whites = [];
     for (let n = first; n <= last; n++) if (![1, 3, 6, 8, 10].includes(n % 12)) whites.push(n);
     const ww = 100 / whites.length;
@@ -379,8 +381,9 @@
       if (held.has(n)) k.classList.add('down');
       kb.appendChild(k);
     }
-    $('#octave-readout').textContent = 'Octave ' + octave;
+    $('#octave-readout').textContent = (window.innerWidth < 560 ? 'Oct ' : 'Octave ') + octave;
   }
+  const keyboardSize = () => (window.innerWidth < 500 ? 'small' : window.innerWidth < 700 ? 'mid' : 'wide');
   let pointerNote = new Map();
   function keyboardPointer() {
     const kb = $('#keyboard');
@@ -494,11 +497,15 @@
       done.clear(); store.set('done', []); renderChallenges(); buildLevelNav();
       toast('Progress reset');
     });
-    let wasNarrow = window.innerWidth < 700;
+    let lastSize = keyboardSize();
     window.addEventListener('resize', () => {
-      const narrow = window.innerWidth < 700;
-      if (narrow !== wasNarrow) { wasNarrow = narrow; buildKeyboard(); }
+      if (keyboardSize() !== lastSize) { lastSize = keyboardSize(); buildKeyboard(); }
     });
+    // Keep page content clear of the fixed keyboard, whatever its height.
+    const keysArea = $('.keys-area');
+    const syncPad = () => document.body.style.setProperty('--kb-h', keysArea.offsetHeight + 16 + 'px');
+    if (window.ResizeObserver) new ResizeObserver(syncPad).observe(keysArea);
+    syncPad();
     requestAnimationFrame(frame);
   }
   init();

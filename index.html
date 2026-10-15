@@ -23,23 +23,30 @@
   <nav id="levels" class="levels" aria-label="Levels"></nav>
 
   <main class="layout">
-    <article class="lesson">
-      <p id="lesson-kicker" class="kicker"></p>
-      <h1 id="lesson-title"></h1>
-      <div id="lesson-theory" class="theory"></div>
-      <h2>Try this</h2>
-      <ul id="lesson-tips" class="tips"></ul>
-      <h2>Challenges <span id="challenge-count" class="count"></span></h2>
-      <ul id="challenges" class="challenges"></ul>
-      <p class="hint">Challenges complete while a note is sounding — so you hear the result.</p>
-      <div class="lesson-nav">
-        <button id="prev-level" type="button">← Previous</button>
-        <button id="next-level" type="button">Next level →</button>
-      </div>
-      <button id="reset-progress" class="link" type="button">Reset progress</button>
-    </article>
+    <div class="col-lesson">
+      <article class="lesson card">
+        <p id="lesson-kicker" class="kicker"></p>
+        <h1 id="lesson-title"></h1>
+        <details id="lesson-more" class="lesson-more" open>
+          <summary>Read the lesson</summary>
+          <div id="lesson-theory" class="theory"></div>
+          <h2>Try this</h2>
+          <ul id="lesson-tips" class="tips"></ul>
+        </details>
+      </article>
+      <section class="tasks card" aria-labelledby="tasks-title">
+        <h2 id="tasks-title">Challenges <span id="challenge-count" class="count"></span></h2>
+        <ul id="challenges" class="challenges"></ul>
+        <p class="hint">A challenge completes while a note is sounding, so you hear the result.</p>
+        <div class="lesson-nav">
+          <button id="prev-level" type="button">← Previous</button>
+          <button id="next-level" type="button">Next level →</button>
+        </div>
+        <button id="reset-progress" class="link" type="button">Reset progress</button>
+      </section>
+    </div>
 
-    <section class="synth" aria-label="Synthesizer">
+    <div class="col-synth">
       <div class="flow" id="flow" aria-label="Signal flow">
         <div data-block="vco"><b>VCO</b><small>oscillator</small></div>
         <div data-block="mix"><b>MIX</b><small>mixer</small></div>
@@ -50,7 +57,7 @@
         <div data-block="lfo" class="mod"><b>LFO</b><small>modulation</small></div>
       </div>
 
-      <div class="case">
+      <section class="case" aria-label="Synthesizer panel">
         <div class="panel-tools">
           <div id="presets" class="presets" hidden>
             <select id="preset-select" aria-label="Presets"></select>
@@ -59,10 +66,11 @@
               <button id="save-patch" type="submit">Save patch</button>
             </form>
           </div>
+          <p class="panel-hint">Drag knobs up or down · Shift for fine · double-click to reset</p>
           <button id="reset" type="button">Reset patch</button>
         </div>
         <div id="panel" class="panel"></div>
-      </div>
+      </section>
 
       <div class="viz-grid">
         <figure class="viz" data-viz="scope"><figcaption>Oscilloscope <small>shape over time</small></figcaption><canvas id="viz-scope"></canvas></figure>
@@ -70,7 +78,7 @@
         <figure class="viz" data-viz="filter"><figcaption>Ladder response <small id="fc-readout"></small></figcaption><canvas id="viz-filter"></canvas></figure>
         <figure class="viz" data-viz="env"><figcaption>Contours <small>ADSR over time</small></figcaption><canvas id="viz-env"></canvas></figure>
       </div>
-    </section>
+    </div>
   </main>
 
   <footer class="keys-area">
@@ -80,9 +88,9 @@
         <label class="wheel"><input id="mod-wheel" type="range" min="0" max="1" step="0.01" value="0" aria-label="Modulation wheel"><span>Mod</span></label>
       </div>
       <div class="octave">
-        <button id="oct-down" type="button" aria-label="Octave down">◀ Z</button>
+        <button id="oct-down" type="button" aria-label="Octave down">◀<span class="kbd-hint"> Z</span></button>
         <span id="octave-readout"></span>
-        <button id="oct-up" type="button" aria-label="Octave up">X ▶</button>
+        <button id="oct-up" type="button" aria-label="Octave up"><span class="kbd-hint">X </span>▶</button>
       </div>
       <div id="note-readout" class="note-readout">—</div>
     </div>
