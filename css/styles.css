@@ -234,6 +234,7 @@ kbd {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 10px 8px 12px;
   border-radius: 10px;
+  background: var(--body);
   background: linear-gradient(160deg, color-mix(in srgb, var(--body) 100%, #fff 12%), var(--body) 45%, color-mix(in srgb, var(--body) 100%, #000 35%));
   border: 1px solid #000;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 6px 14px rgba(0, 0, 0, 0.45);

@@ -480,9 +480,11 @@
     $('#loop-quant').addEventListener('change', (e) => { (looper ? looper.state : looperPrefs).quantize = e.target.checked; saveLooperPrefs(); });
     renderLooper();
   }
+  let shownNotes = 0;
   function drawLooper() {
     if (!looper) return;
     const s = looper.status();
+    if (s.notes !== shownNotes) { shownNotes = s.notes; renderLooper(); }
     const cur = Math.floor(s.beat);
     $$('#loop-beats i').forEach((b, i) => {
       b.classList.toggle('now', s.running && !s.counting && i === cur);
@@ -541,7 +543,8 @@
     kb.addEventListener('pointercancel', up);
   }
   function computerKeys() {
-    const typing = (e) => /INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && e.target.type !== 'range';
+    // Only text fields swallow keys; checkboxes, sliders and buttons leave the keyboard playable.
+    const typing = (e) => e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && /text|number|search/.test(e.target.type));
     window.addEventListener('keydown', (e) => {
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || typing(e)) return;
       const key = e.key.toLowerCase();
@@ -556,6 +559,15 @@
       if (key in KEYMAP) noteOff(12 * (octave + 1) + KEYMAP[key]);
     });
     window.addEventListener('blur', allOff);
+    // A mouse/touch click shouldn't leave focus on a button or menu, or Space/letters would
+    // press that button or change the menu instead of playing. Keyboard (Tab) users are unaffected.
+    document.addEventListener('pointerup', (e) => {
+      const el = e.target.closest('button');
+      if (el) setTimeout(() => el.blur());
+    });
+    document.addEventListener('change', (e) => {
+      if (e.target.tagName === 'SELECT' || e.target.type === 'checkbox') e.target.blur();
+    });
   }
 
   // ---------- wheels & MIDI ----------
