@@ -1,0 +1,11 @@
+{
+  "name": "learn-synthesizer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MoogLab — learn subtractive synthesis on a simulated Minimoog-style synthesizer",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node --test tests/*.test.js"
+  },
+  "license": "MIT"
+}
