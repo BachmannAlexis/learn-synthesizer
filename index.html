@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MoogLab — Learn Synthesis</title>
+  <title>MoogLab</title>
   <meta name="description" content="Learn subtractive synthesis step by step on a simulated Minimoog-style synthesizer.">
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -54,7 +54,10 @@
         <div class="panel-tools">
           <div id="presets" class="presets" hidden>
             <select id="preset-select" aria-label="Presets"></select>
-            <button id="save-patch" type="button">Save patch</button>
+            <form id="save-form" class="save-form">
+              <input id="patch-name" type="text" maxlength="40" placeholder="Patch name" aria-label="Patch name">
+              <button id="save-patch" type="submit">Save patch</button>
+            </form>
           </div>
           <button id="reset" type="button">Reset patch</button>
         </div>

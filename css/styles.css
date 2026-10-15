@@ -157,6 +157,11 @@ kbd {
 }
 .presets { display: flex; gap: 8px; margin-right: auto; flex-wrap: wrap; }
 .presets select { max-width: 220px; }
+.save-form { display: flex; gap: 6px; }
+.save-form input {
+  font: inherit; color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; width: 140px;
+}
 .panel {
   background: var(--panel);
   display: flex; flex-wrap: wrap; gap: 10px;
@@ -216,7 +221,7 @@ kbd {
 .keys-area {
   position: fixed; left: 0; right: 0; bottom: 0;
   display: flex; gap: 14px; align-items: stretch;
-  padding: 10px 14px 12px;
+  padding: 10px max(14px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
   background: linear-gradient(var(--wood-2), #2c180b);
   border-top: 2px solid #000;
   z-index: 5;

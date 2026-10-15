@@ -53,3 +53,8 @@ tests/            DSP and curriculum tests (npm test)
 ```
 
 Progress and your saved patches are stored in the browser's `localStorage`.
+
+## Single-file build
+
+`python3 tools/bundle.py out.html` inlines all CSS and JS into one HTML file you can host anywhere.
+If the host blocks AudioWorklet modules, the app falls back to running the same engine on the main thread.

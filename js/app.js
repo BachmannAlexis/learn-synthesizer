@@ -24,29 +24,59 @@
     starting = (async () => {
       ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
       const src = '(' + mooglabDSP.toString() + ')();';
+      let out;
       try {
-        await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([src], { type: 'application/javascript' })));
+        out = await workletNode(src);
       } catch {
-        // Some browsers refuse blob: worklets on file:// pages; a data: URL usually works there.
-        await ctx.audioWorklet.addModule('data:application/javascript;charset=utf-8,' + encodeURIComponent(src));
+        out = scriptNode(); // sandboxed pages may refuse worklet modules: run the same engine on the main thread
       }
-      node = new AudioWorkletNode(ctx, 'moog-voice', { numberOfInputs: 0, outputChannelCount: [2] });
-      node.port.onmessage = (e) => { tele = e.data; };
       analyser = ctx.createAnalyser();
       analyser.fftSize = 8192;
       analyser.smoothingTimeConstant = 0.6;
-      node.connect(analyser);
+      out.connect(analyser);
       analyser.connect(ctx.destination);
       sendParams();
       document.body.classList.add('powered');
       $('#power').textContent = 'Audio on';
     })().catch((err) => {
       starting = null;
-      $('#power').textContent = 'Audio failed';
-      alert('Could not start audio: ' + err.message + '\nUse a recent Chrome, Edge, Firefox or Safari.');
+      $('#power').textContent = 'Audio failed — retry';
+      toast('Could not start audio (' + err.message + '). Try a recent Chrome, Edge, Firefox or Safari.');
     });
     if (ctx && ctx.state === 'suspended') ctx.resume();
     return starting;
+  }
+  async function workletNode(src) {
+    try {
+      await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([src], { type: 'application/javascript' })));
+    } catch {
+      // Some browsers refuse blob: worklets on file:// pages; a data: URL usually works there.
+      await ctx.audioWorklet.addModule('data:application/javascript;charset=utf-8,' + encodeURIComponent(src));
+    }
+    const w = new AudioWorkletNode(ctx, 'moog-voice', { numberOfInputs: 0, outputChannelCount: [2] });
+    w.port.onmessage = (e) => { tele = e.data; };
+    node = { port: w.port };
+    return w;
+  }
+  function scriptNode() {
+    mooglabDSP();
+    const engine = new globalThis.MooglabEngine(ctx.sampleRate);
+    const sp = ctx.createScriptProcessor(1024, 0, 2);
+    sp.onaudioprocess = (e) => {
+      const l = e.outputBuffer.getChannelData(0);
+      engine.render(l);
+      e.outputBuffer.getChannelData(1).set(l);
+      tele = { envA: engine.envA.v, envF: engine.envF.v, stageA: engine.envA.stage, fc: engine.fc, lfo: engine.lfo, note: engine.cur };
+    };
+    node = { port: { postMessage(m) {
+      if (m.type === 'params') Object.assign(engine.p, m.p);
+      else if (m.type === 'noteOn') engine.noteOn(m.note);
+      else if (m.type === 'noteOff') engine.noteOff(m.note);
+      else if (m.type === 'bend') engine.bend = m.value;
+      else if (m.type === 'allOff') engine.allOff();
+    } } };
+    window.__mooglabKeep = sp; // keep the node alive
+    return sp;
   }
   const send = (m) => node && node.port.postMessage(m);
   const sendParams = () => send({ type: 'params', p: patch });
@@ -307,9 +337,11 @@
     sendParams();
     checkChallenges();
   }
-  function savePatch() {
-    const name = prompt('Name your patch:');
-    if (!name) return;
+  function savePatch(e) {
+    e.preventDefault();
+    const name = $('#patch-name').value.trim();
+    if (!name) { $('#patch-name').focus(); return; }
+    $('#patch-name').value = '';
     const user = store.get('patches', {});
     user[name] = { ...patch };
     store.set('patches', user);
@@ -449,10 +481,18 @@
     $('#oct-down').addEventListener('click', () => { allOff(); octave = Math.max(1, octave - 1); buildKeyboard(); });
     $('#oct-up').addEventListener('click', () => { allOff(); octave = Math.min(7, octave + 1); buildKeyboard(); });
     $('#preset-select').addEventListener('change', (e) => loadPreset(e.target.value));
-    $('#save-patch').addEventListener('click', savePatch);
-    $('#reset-progress').addEventListener('click', () => {
-      if (!confirm('Reset all stars and saved progress?')) return;
+    $('#save-form').addEventListener('submit', savePatch);
+    let armed = null;
+    $('#reset-progress').addEventListener('click', (e) => {
+      const b = e.currentTarget;
+      if (!armed) {
+        b.textContent = 'Click again to erase all stars';
+        armed = setTimeout(() => { armed = null; b.textContent = 'Reset progress'; }, 3000);
+        return;
+      }
+      clearTimeout(armed); armed = null; b.textContent = 'Reset progress';
       done.clear(); store.set('done', []); renderChallenges(); buildLevelNav();
+      toast('Progress reset');
     });
     let wasNarrow = window.innerWidth < 700;
     window.addEventListener('resize', () => {
