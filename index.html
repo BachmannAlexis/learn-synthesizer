@@ -59,7 +59,7 @@
 
       <section class="case" aria-label="Synthesizer panel">
         <div class="panel-tools">
-          <div id="presets" class="presets" hidden>
+          <div id="presets" class="presets">
             <select id="preset-select" aria-label="Presets"></select>
             <form id="save-form" class="save-form">
               <input id="patch-name" type="text" maxlength="40" placeholder="Patch name" aria-label="Patch name">
@@ -70,6 +70,36 @@
           <button id="reset" type="button">Reset patch</button>
         </div>
         <div id="panel" class="panel"></div>
+      </section>
+
+      <section class="board" aria-labelledby="board-title">
+        <h2 id="board-title" class="board-title">Pedalboard <small>effects after the synth · loop station</small></h2>
+        <div class="board-row">
+          <div id="looper" class="looper" data-state="idle">
+            <div class="looper-head">
+              <span class="pedal-name">Loop Station</span>
+              <span id="loop-state" class="loop-state">Empty</span>
+            </div>
+            <div class="loop-track" aria-hidden="true">
+              <div id="loop-beats" class="loop-beats"></div>
+              <div id="loop-progress" class="loop-progress"></div>
+            </div>
+            <p id="loop-layers" class="loop-layers"></p>
+            <div class="loop-buttons">
+              <button id="loop-rec" class="loop-btn rec" type="button" title="Record / overdub (R)">● Rec</button>
+              <button id="loop-play" class="loop-btn" type="button" title="Play / stop (Space)">▶ Play</button>
+              <button id="loop-undo" class="loop-btn" type="button" title="Remove the last take">Undo</button>
+              <button id="loop-clear" class="loop-btn" type="button" title="Erase the loop">Clear</button>
+            </div>
+            <div class="loop-settings">
+              <label>Tempo <input id="loop-bpm" type="number" min="40" max="240" step="1" inputmode="numeric"> BPM</label>
+              <label>Length <select id="loop-bars"><option value="1">1 bar</option><option value="2">2 bars</option><option value="4">4 bars</option><option value="8">8 bars</option></select></label>
+              <label class="check"><input id="loop-click" type="checkbox"> Click</label>
+              <label class="check"><input id="loop-quant" type="checkbox"> Snap to 1/16</label>
+            </div>
+          </div>
+          <div id="pedals" class="pedals"></div>
+        </div>
       </section>
 
       <div class="viz-grid">
@@ -92,6 +122,7 @@
         <span id="octave-readout"></span>
         <button id="oct-up" type="button" aria-label="Octave up"><span class="kbd-hint">X </span>▶</button>
       </div>
+      <button id="hold" class="hold" type="button" aria-pressed="false" title="Sustain: notes keep sounding after you let go (right Shift, MIDI pedal)">Hold</button>
       <div id="note-readout" class="note-readout">—</div>
     </div>
     <div id="keyboard" class="keyboard" aria-label="Keyboard"></div>
@@ -103,6 +134,8 @@
   <script src="js/params.js"></script>
   <script src="js/lessons.js"></script>
   <script src="js/viz.js"></script>
+  <script src="js/fx.js"></script>
+  <script src="js/looper.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

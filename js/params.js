@@ -45,9 +45,34 @@ const PARAMS = [
   { id: 'master', label: 'Volume', section: 'output', min: 0, max: 1, def: 0.7, fmt: 'pct', level: 1 },
   // Performance (driven by the mod wheel, shown in the keyboard area)
   { id: 'modWheel', label: 'Mod', section: 'perf', min: 0, max: 1, def: 0, fmt: 'pct', level: 5 },
+  // Effect pedals (after the synth, available on every level; not part of synth patches)
+  { id: 'fxDriveOn', label: 'On', pedal: 'drive', type: 'toggle', def: 0, level: 1, fx: true },
+  { id: 'fxDriveGain', label: 'Gain', pedal: 'drive', min: 1, max: 40, def: 6, curve: 'log', fmt: 'x', level: 1, fx: true },
+  { id: 'fxDriveTone', label: 'Tone', pedal: 'drive', min: 400, max: 12000, def: 3500, curve: 'log', fmt: 'hz', level: 1, fx: true },
+  { id: 'fxDriveLevel', label: 'Level', pedal: 'drive', min: 0, max: 1, def: 0.5, fmt: 'pct', level: 1, fx: true },
+  { id: 'fxChorusOn', label: 'On', pedal: 'chorus', type: 'toggle', def: 0, level: 1, fx: true },
+  { id: 'fxChorusRate', label: 'Rate', pedal: 'chorus', min: 0.05, max: 6, def: 0.6, curve: 'log', fmt: 'hz', level: 1, fx: true },
+  { id: 'fxChorusDepth', label: 'Depth', pedal: 'chorus', min: 0, max: 1, def: 0.5, fmt: 'pct', level: 1, fx: true },
+  { id: 'fxChorusMix', label: 'Mix', pedal: 'chorus', min: 0, max: 1, def: 0.6, fmt: 'pct', level: 1, fx: true },
+  { id: 'fxDelayOn', label: 'On', pedal: 'delay', type: 'toggle', def: 0, level: 1, fx: true },
+  { id: 'fxDelayTime', label: 'Time', pedal: 'delay', min: 0.03, max: 1.5, def: 0.36, curve: 'log', fmt: 's', level: 1, fx: true },
+  { id: 'fxDelayFeedback', label: 'Repeats', pedal: 'delay', min: 0, max: 0.92, def: 0.4, fmt: 'pct', level: 1, fx: true },
+  { id: 'fxDelayMix', label: 'Mix', pedal: 'delay', min: 0, max: 1, def: 0.35, fmt: 'pct', level: 1, fx: true },
+  { id: 'fxReverbOn', label: 'On', pedal: 'reverb', type: 'toggle', def: 0, level: 1, fx: true },
+  { id: 'fxReverbSize', label: 'Size', pedal: 'reverb', min: 0.3, max: 8, def: 2.5, curve: 'log', fmt: 's', level: 1, fx: true },
+  { id: 'fxReverbTone', label: 'Tone', pedal: 'reverb', min: 1000, max: 16000, def: 6000, curve: 'log', fmt: 'hz', level: 1, fx: true },
+  { id: 'fxReverbMix', label: 'Mix', pedal: 'reverb', min: 0, max: 1, def: 0.3, fmt: 'pct', level: 1, fx: true },
 ];
 
-const PARAM_BY_ID = Object.fromEntries(PARAMS.map((p) => [p.id, p]));
+const PEDALS = [
+  { id: 'drive', name: 'Overdrive', blurb: 'Clips the waveform: more harmonics, more grit.' },
+  { id: 'chorus', name: 'Chorus', blurb: 'Adds slightly detuned, wobbling copies for width.' },
+  { id: 'delay', name: 'Echo', blurb: 'Repeats what you play after a set time.' },
+  { id: 'reverb', name: 'Reverb', blurb: 'Places the sound in a room or hall.' },
+];
+const isFx = (id) => !!(PARAM_BY_ID[id] && PARAM_BY_ID[id].fx);
+
+var PARAM_BY_ID = Object.fromEntries(PARAMS.map((p) => [p.id, p]));
 
 const SECTIONS = [
   { id: 'osc1', title: 'Oscillator 1' },
@@ -87,7 +112,37 @@ const LEVEL_PATCHES = {
   6: null, // sandbox: starts from the first preset
 };
 
+// Each preset only changes what it lists; the rest stays at the defaults.
+// Simple presets come first so every level has sounds made only from controls you can see.
 const PRESETS = {
+  'Pure Sine': { osc1Wave: 0 },
+  'Soft Flute': { osc1Wave: 1, osc1Range: 3 },
+  'Hollow Square': { osc1Wave: 3, osc1Range: 2 },
+  'Nasal Reed': { osc1Wave: 5, osc1Range: 3 },
+  'Deep Saw': { osc1Wave: 2, osc1Range: 0 },
+  'Muted Saw': { osc1Wave: 2, cutoff: 450, resonance: 0.15 },
+  'Resonant Sweep': { osc1Wave: 2, cutoff: 1200, resonance: 0.8 },
+  'Gritty Square': { osc1Wave: 3, osc1Range: 1, cutoff: 900, resonance: 0.3, drive: 3.5 },
+  'Bwow Bass': {
+    osc1Wave: 2, osc1Range: 1, cutoff: 160, resonance: 0.4, filterEnvAmt: 3.4,
+    fA: 0.003, fD: 0.3, fS: 0.05, fR: 0.2, aA: 0.003, aD: 0.5, aS: 0.7, aR: 0.12,
+  },
+  'Slow Swell': {
+    osc1Wave: 2, cutoff: 600, resonance: 0.2, filterEnvAmt: 1.5,
+    fA: 1.8, fD: 1, fS: 0.6, fR: 1.5, aA: 1.5, aD: 1, aS: 0.9, aR: 1.8,
+  },
+  'Detuned Stack': {
+    osc1Wave: 2, osc2Wave: 2, osc2Detune: 0.12, osc3Wave: 2, osc3Detune: -0.1,
+    osc1Level: 0.7, osc2Level: 0.7, osc3Level: 0.7, cutoff: 1500, resonance: 0.15,
+  },
+  'Power Fifths': {
+    osc1Wave: 2, osc2Wave: 2, osc2Detune: 7, osc3Wave: 3, osc3Range: 1,
+    osc1Level: 0.7, osc2Level: 0.6, osc3Level: 0.5, cutoff: 1100, resonance: 0.2, drive: 2,
+  },
+  'Vibrato Lead': {
+    osc1Wave: 3, osc2Wave: 2, osc2Detune: 0.05, osc1Level: 0.8, osc2Level: 0.6,
+    cutoff: 2000, resonance: 0.2, glide: 0.12, lfoRate: 5.8, lfoWave: 0, lfoPitch: 0.35, modWheel: 0.6,
+  },
   'Fat Bass': {
     osc1Wave: 2, osc1Range: 1, osc2Wave: 2, osc2Range: 1, osc2Detune: 0.1, osc3Wave: 3, osc3Range: 0,
     osc1Level: 0.8, osc2Level: 0.7, osc3Level: 0.6, noiseLevel: 0,
@@ -150,6 +205,17 @@ const PRESETS = {
   },
 };
 
+// Lowest level whose controls can show everything a preset changes.
+function presetLevel(src) {
+  const defs = defaultPatch();
+  let lv = 1;
+  for (const [k, v] of Object.entries(src)) {
+    const d = PARAM_BY_ID[k];
+    if (d && !d.fx && v !== defs[k]) lv = Math.max(lv, d.level);
+  }
+  return lv;
+}
+
 function patchForLevel(level) {
   if (level === 6) return { ...defaultPatch(), ...PRESETS['Fat Bass'] };
   return { ...defaultPatch(), ...LEVEL_PATCHES[level] };
@@ -172,6 +238,7 @@ function fromNorm(def, n) {
 
 function formatValue(def, v) {
   if (def.type === 'choice') return def.options[v];
+  if (def.type === 'toggle') return v ? 'On' : 'Off';
   switch (def.fmt) {
     case 'hz': return v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 1 : 2) + ' kHz' : v.toFixed(v < 10 ? 2 : 0) + ' Hz';
     case 's': return v < 1 ? Math.round(v * 1000) + ' ms' : v.toFixed(2) + ' s';
@@ -183,4 +250,4 @@ function formatValue(def, v) {
   }
 }
 
-if (typeof module !== 'undefined') module.exports = { PARAMS, PRESETS, LEVEL_PATCHES, defaultPatch, patchForLevel, toNorm, fromNorm, formatValue };
+if (typeof module !== 'undefined') module.exports = { PARAMS, PRESETS, PEDALS, LEVEL_PATCHES, defaultPatch, patchForLevel, presetLevel, toNorm, fromNorm, formatValue };

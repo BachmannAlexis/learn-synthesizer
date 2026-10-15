@@ -10,15 +10,21 @@
   // ---------- state ----------
   let level = store.get('level', 1);
   const levelPatches = {}; // per-level edits kept while switching levels
-  let patch = patchForLevel(level);
+  // Pedal settings live in the same patch object but persist across levels and presets.
+  const fxOf = (p) => Object.fromEntries(PARAMS.filter((d) => d.fx).map((d) => [d.id, p[d.id]]));
+  const synthOf = (p) => Object.fromEntries(Object.entries(p).filter(([k]) => !isFx(k)));
+  let patch = { ...patchForLevel(level), ...store.get('fx', {}) };
+  const withFx = (p) => ({ ...p, ...fxOf(patch) });
   const done = new Set(store.get('done', []));
   const stats = { legato: 0, bent: false, presets: new Set(), saved: false };
-  const held = new Set();
+  const held = new Set();      // keys physically down
+  const sounding = new Set();  // notes the synth is playing (held, or kept by the hold pedal)
+  let sustain = false;
   let tele = null;
   let octave = 4;
 
   // ---------- audio ----------
-  let ctx = null, node = null, analyser = null, starting = null;
+  let ctx = null, node = null, analyser = null, starting = null, board = null, looper = null;
   function startAudio() {
     if (starting) return starting;
     starting = (async () => {
@@ -33,8 +39,21 @@
       analyser = ctx.createAnalyser();
       analyser.fftSize = 8192;
       analyser.smoothingTimeConstant = 0.6;
-      out.connect(analyser);
-      analyser.connect(ctx.destination);
+      out.connect(analyser); // the scopes show the synth itself, before the pedals
+      board = createPedalboard(ctx);
+      out.connect(board.input);
+      board.output.connect(ctx.destination);
+      board.update(patch);
+      looper = createLooper({
+        now: () => ctx.currentTime,
+        inputTime: () => ctx.currentTime - (ctx.outputLatency || ctx.baseLatency || 0),
+        sampleRate: ctx.sampleRate,
+        send,
+        click: metronomeClick,
+        onChange: renderLooper,
+      });
+      Object.assign(looper.state, looperPrefs);
+      setInterval(() => looper.tick(), 25);
       sendParams();
       document.body.classList.add('powered');
       $('#power').textContent = 'Audio on';
@@ -60,26 +79,31 @@
   }
   function scriptNode() {
     mooglabDSP();
-    const engine = new globalThis.MooglabEngine(ctx.sampleRate);
+    const rack = new globalThis.MooglabRack(ctx.sampleRate);
     const sp = ctx.createScriptProcessor(1024, 0, 2);
     sp.onaudioprocess = (e) => {
       const l = e.outputBuffer.getChannelData(0);
-      engine.render(l);
+      rack.render(l, Math.round(e.playbackTime * ctx.sampleRate));
       e.outputBuffer.getChannelData(1).set(l);
-      tele = { envA: engine.envA.v, envF: engine.envF.v, stageA: engine.envA.stage, fc: engine.fc, lfo: engine.lfo, note: engine.cur };
+      tele = rack.telemetry();
     };
-    node = { port: { postMessage(m) {
-      if (m.type === 'params') Object.assign(engine.p, m.p);
-      else if (m.type === 'noteOn') engine.noteOn(m.note);
-      else if (m.type === 'noteOff') engine.noteOff(m.note);
-      else if (m.type === 'bend') engine.bend = m.value;
-      else if (m.type === 'allOff') engine.allOff();
-    } } };
+    node = { port: { postMessage: (m) => rack.message(m) } };
     window.__mooglabKeep = sp; // keep the node alive
     return sp;
   }
   const send = (m) => node && node.port.postMessage(m);
-  const sendParams = () => send({ type: 'params', p: patch });
+  const sendParams = () => send({ type: 'params', p: synthOf(patch) });
+
+  function metronomeClick(t, accent) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = accent ? 1760 : 1175;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(accent ? 0.25 : 0.14, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    o.connect(g).connect(ctx.destination);
+    o.start(t);
+    o.stop(t + 0.06);
+  }
 
   // ---------- notes ----------
   const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
@@ -91,15 +115,33 @@
     $$(`.key[data-note="${n}"]`).forEach((k) => k.classList.add('down'));
     $('#note-readout').textContent = noteName(n) + ' · ' + (440 * Math.pow(2, (n - 69) / 12)).toFixed(1) + ' Hz';
     await startAudio();
+    if (!held.has(n)) return; // released while audio was starting
+    if (sounding.has(n)) { send({ type: 'noteOff', note: n }); if (looper) looper.noteOff(n); }
+    sounding.add(n);
     send({ type: 'noteOn', note: n });
+    if (looper) looper.noteOn(n);
     checkChallenges();
   }
   function noteOff(n) {
     if (!held.delete(n)) return;
     $$(`.key[data-note="${n}"]`).forEach((k) => k.classList.remove('down'));
-    send({ type: 'noteOff', note: n });
+    if (!sustain) release(n);
   }
-  function allOff() { [...held].forEach(noteOff); send({ type: 'allOff' }); }
+  function release(n) {
+    if (!sounding.delete(n)) return;
+    send({ type: 'noteOff', note: n });
+    if (looper) looper.noteOff(n);
+  }
+  function setSustain(on) {
+    sustain = on;
+    $('#hold').setAttribute('aria-pressed', on);
+    if (!on) [...sounding].filter((n) => !held.has(n)).forEach(release);
+  }
+  function allOff() {
+    [...held].forEach(noteOff);
+    [...sounding].forEach(release);
+    send({ type: 'allOff' });
+  }
 
   // ---------- controls ----------
   const controls = {}; // id -> update fn
@@ -191,7 +233,7 @@
 
   function setParam(id, v, { silent = false } = {}) {
     const def = PARAM_BY_ID[id];
-    if (def.type !== 'choice') {
+    if (!def.type) {
       v = Math.min(def.max, Math.max(def.min, v));
       if (def.fmt === 'pct' && v < 0.005) v = 0;
       if (id.endsWith('Detune') && Math.abs(v - Math.round(v)) < 0.04) v = Math.round(v); // snap to semitones
@@ -199,6 +241,11 @@
     patch[id] = v;
     if (controls[id]) controls[id]();
     if (id === 'modWheel') $('#mod-wheel').value = v;
+    if (def.fx) {
+      if (board) board.update(patch);
+      store.set('fx', fxOf(patch));
+      return;
+    }
     if (!silent) { sendParams(); checkChallenges(); }
   }
 
@@ -222,7 +269,8 @@
     }
     Object.values(controls).forEach((f) => f());
     $('#perf').hidden = level < 5;
-    $('#presets').hidden = level < 6;
+    buildPresets();
+    buildPedalboard();
   }
 
   // ---------- lessons ----------
@@ -301,7 +349,7 @@
     levelPatches[level] = { ...patch };
     level = n;
     store.set('level', level);
-    patch = levelPatches[level] ? { ...levelPatches[level] } : patchForLevel(level);
+    patch = withFx(levelPatches[level] ? levelPatches[level] : patchForLevel(level));
     for (const k of Object.keys(controls)) delete controls[k];
     buildPanel();
     buildLesson();
@@ -312,7 +360,7 @@
   }
 
   function resetPatch() {
-    patch = patchForLevel(level);
+    patch = withFx(patchForLevel(level));
     Object.values(controls).forEach((f) => f());
     $('#mod-wheel').value = patch.modWheel;
     sendParams();
@@ -323,8 +371,14 @@
   function buildPresets() {
     const sel = $('#preset-select');
     const user = store.get('patches', {});
-    sel.innerHTML = '<option value="">— choose a preset —</option>' +
-      '<optgroup label="Factory">' + Object.keys(PRESETS).map((k) => `<option value="f:${k}">${k}</option>`).join('') + '</optgroup>' +
+    // Group factory sounds by the level whose controls they use; later levels are marked.
+    const byLevel = {};
+    for (const [k, v] of Object.entries(PRESETS)) (byLevel[presetLevel(v)] ||= []).push(k);
+    const groups = Object.keys(byLevel).sort().map((lv) => {
+      const label = `Level ${lv} · ${LEVELS[lv - 1].title}${lv > level ? ' (preview)' : ''}`;
+      return `<optgroup label="${label}">` + byLevel[lv].map((k) => `<option value="f:${k}">${k}</option>`).join('') + '</optgroup>';
+    });
+    sel.innerHTML = '<option value="">Presets…</option>' + groups.join('') +
       (Object.keys(user).length ? '<optgroup label="My patches">' + Object.keys(user).map((k) => `<option value="u:${k}">${k}</option>`).join('') + '</optgroup>' : '');
   }
   function loadPreset(v) {
@@ -332,7 +386,9 @@
     const user = store.get('patches', {});
     const src = v.startsWith('f:') ? PRESETS[v.slice(2)] : user[v.slice(2)];
     if (!src) return;
-    patch = { ...defaultPatch(), ...src };
+    patch = withFx({ ...defaultPatch(), ...synthOf(src) });
+    const needs = presetLevel(src);
+    if (needs > level) toast(`This preset also uses Level ${needs} controls you can't see yet`);
     Object.values(controls).forEach((f) => f());
     $('#mod-wheel').value = patch.modWheel;
     if (v.startsWith('f:')) stats.presets.add(v);
@@ -345,13 +401,94 @@
     if (!name) { $('#patch-name').focus(); return; }
     $('#patch-name').value = '';
     const user = store.get('patches', {});
-    user[name] = { ...patch };
+    user[name] = synthOf(patch);
     store.set('patches', user);
     stats.saved = true;
     buildPresets();
     $('#preset-select').value = 'u:' + name;
     checkChallenges();
     toast('Saved “' + name + '”');
+  }
+
+  // ---------- pedalboard ----------
+  function buildPedalboard() {
+    const box = $('#pedals');
+    box.innerHTML = '';
+    for (const pd of PEDALS) {
+      const on = PARAMS.find((d) => d.pedal === pd.id && d.type === 'toggle');
+      const el = document.createElement('div');
+      el.className = 'pedal pedal-' + pd.id;
+      el.innerHTML = `<div class="pedal-knobs"></div>
+        <div class="pedal-name">${pd.name}</div>
+        <p class="pedal-blurb">${pd.blurb}</p>
+        <span class="led" aria-hidden="true"></span>
+        <button type="button" class="footswitch" aria-label="${pd.name} on/off"></button>`;
+      for (const d of PARAMS.filter((d) => d.pedal === pd.id && !d.type)) $('.pedal-knobs', el).appendChild(makeKnob(d));
+      const sw = $('.footswitch', el);
+      sw.addEventListener('click', () => setParam(on.id, patch[on.id] ? 0 : 1));
+      controls[on.id] = () => { el.classList.toggle('on', !!patch[on.id]); sw.setAttribute('aria-pressed', !!patch[on.id]); };
+      box.appendChild(el);
+    }
+    Object.values(controls).forEach((f) => f());
+  }
+
+  // ---------- looper ----------
+  const looperPrefs = { bpm: 110, bars: 2, metronome: true, quantize: true, ...store.get('looper', {}) };
+  async function withLooper(fn) {
+    await startAudio();
+    if (looper) fn(looper);
+  }
+  function saveLooperPrefs() {
+    const st = looper ? looper.state : looperPrefs;
+    store.set('looper', { bpm: st.bpm, bars: st.bars, metronome: st.metronome, quantize: st.quantize });
+  }
+  function renderLooper() {
+    const st = looper ? looper.state : looperPrefs;
+    const s = looper ? looper.status() : { running: false, recording: false, layers: 0, notes: 0, loopBeats: st.bars * 4 };
+    const label = s.recording ? (s.layers || s.notes ? 'Overdub' : 'Recording') : s.running ? 'Playing' : s.notes ? 'Stopped' : 'Empty';
+    $('#loop-state').textContent = label;
+    $('#looper').dataset.state = s.recording ? 'rec' : s.running ? 'play' : 'idle';
+    $('#loop-rec').setAttribute('aria-pressed', s.recording);
+    $('#loop-play').textContent = s.running ? '■ Stop' : '▶ Play';
+    $('#loop-play').disabled = !s.running && !s.notes;
+    $('#loop-undo').disabled = !s.notes;
+    $('#loop-clear').disabled = !s.notes && !s.running;
+    $('#loop-layers').textContent = s.notes ? `${s.layers} take${s.layers === 1 ? '' : 's'} · ${s.notes} notes` : 'Press Rec, then play';
+    $('#loop-bpm').value = st.bpm;
+    $('#loop-bars').value = st.bars;
+    $('#loop-bars').disabled = !!(s.notes || s.running);
+    $('#loop-click').checked = st.metronome;
+    $('#loop-quant').checked = st.quantize;
+    const beats = $('#loop-beats');
+    if (beats.childElementCount !== s.loopBeats) beats.innerHTML = '<i></i>'.repeat(s.loopBeats);
+  }
+  function looperUI() {
+    $('#loop-rec').addEventListener('click', () => withLooper((l) => l.rec()));
+    $('#loop-play').addEventListener('click', () => withLooper((l) => l.toggle()));
+    $('#loop-undo').addEventListener('click', () => withLooper((l) => l.undo()));
+    $('#loop-clear').addEventListener('click', () => withLooper((l) => l.clear()));
+    $('#loop-bpm').addEventListener('change', (e) => {
+      const v = +e.target.value || 110;
+      if (looper) looper.setBpm(v); else looperPrefs.bpm = Math.min(240, Math.max(40, Math.round(v)));
+      saveLooperPrefs(); renderLooper();
+    });
+    $('#loop-bars').addEventListener('change', (e) => {
+      if (looper) looper.setBars(+e.target.value); else looperPrefs.bars = +e.target.value;
+      saveLooperPrefs(); renderLooper();
+    });
+    $('#loop-click').addEventListener('change', (e) => { (looper ? looper.state : looperPrefs).metronome = e.target.checked; saveLooperPrefs(); });
+    $('#loop-quant').addEventListener('change', (e) => { (looper ? looper.state : looperPrefs).quantize = e.target.checked; saveLooperPrefs(); });
+    renderLooper();
+  }
+  function drawLooper() {
+    if (!looper) return;
+    const s = looper.status();
+    const cur = Math.floor(s.beat);
+    $$('#loop-beats i').forEach((b, i) => {
+      b.classList.toggle('now', s.running && !s.counting && i === cur);
+      b.classList.toggle('bar', i % 4 === 0);
+    });
+    $('#loop-progress').style.width = s.running ? (s.beat / s.loopBeats) * 100 + '%' : '0%';
   }
 
   // ---------- keyboard ----------
@@ -409,6 +546,9 @@
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || typing(e)) return;
       const key = e.key.toLowerCase();
       if (key === 'z' || key === 'x') { allOff(); octave = Math.min(7, Math.max(1, octave + (key === 'x' ? 1 : -1))); buildKeyboard(); return; }
+      if (key === 'r') { withLooper((l) => l.rec()); e.preventDefault(); return; }
+      if (key === ' ' && !/BUTTON/.test(e.target.tagName)) { withLooper((l) => l.toggle()); e.preventDefault(); return; }
+      if (key === 'shift' && e.location === 2) { setSustain(!sustain); return; } // right Shift toggles hold
       if (key in KEYMAP) { noteOn(12 * (octave + 1) + KEYMAP[key]); e.preventDefault(); }
     });
     window.addEventListener('keyup', (e) => {
@@ -443,6 +583,7 @@
       if (cmd === 0x90 && d2 > 0) noteOn(d1);
       else if (cmd === 0x80 || (cmd === 0x90 && d2 === 0)) noteOff(d1);
       else if (cmd === 0xb0 && d1 === 1) setParam('modWheel', d2 / 127);
+      else if (cmd === 0xb0 && d1 === 64) setSustain(d2 >= 64);
       else if (cmd === 0xe0) {
         const v = (((d2 << 7) | d1) - 8192) / 8192 * 2;
         $('#bend-wheel').value = v;
@@ -460,6 +601,7 @@
     if (L.viz.includes('spectrum')) Viz.spectrum($('#viz-spectrum'), analyser, sr);
     if (L.viz.includes('filter')) Viz.filter($('#viz-filter'), patch, tele && tele.stageA ? tele.fc : null);
     if (L.viz.includes('env')) Viz.envelopes($('#viz-env'), patch, tele);
+    drawLooper();
     if (tele && L.viz.includes('filter')) $('#fc-readout').textContent = tele.stageA ? 'live cutoff ' + formatValue(PARAM_BY_ID.cutoff, tele.fc) : '';
     requestAnimationFrame(frame);
   }
@@ -476,6 +618,8 @@
     computerKeys();
     wheels();
     midi();
+    looperUI();
+    $('#hold').addEventListener('click', () => { setSustain(!sustain); });
     $('#mod-wheel').value = patch.modWheel;
     $('#power').addEventListener('click', () => { startAudio(); if (ctx) ctx.resume(); });
     $('#reset').addEventListener('click', resetPatch);
@@ -509,4 +653,6 @@
     requestAnimationFrame(frame);
   }
   init();
+  // Read-only hooks for automated tests and curious learners (try it in the console).
+  window.mooglab = { get patch() { return { ...patch }; }, get telemetry() { return tele; }, get looper() { return looper && looper.status(); } };
 })();

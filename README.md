@@ -22,6 +22,13 @@ or serve the folder:
 npm start        # python3 -m http.server 8000 → http://localhost:8000
 ```
 
+### Presets, pedals and loops
+
+- **Presets on every level** — 22 factory sounds grouped by the level whose controls they use, plus your own saved patches.
+- **Pedalboard** — Overdrive → Chorus → Echo → Reverb after the synth, each with a footswitch. Pedal settings stay put when you change level or preset.
+- **Loop Station** — `R` records (press again to stop recording, again to overdub), `Space` plays/stops, Undo removes the last take. Tempo, length (1–8 bars), click and 1/16 snap. Loops play on a second synth voice, so you can play live over them.
+- **Hold** (sustain) — on-screen button, right `Shift`, or a MIDI sustain pedal (CC64).
+
 Play with your mouse/touch, your computer keyboard (`A`–`'` white keys, `W E T Y U O P` black keys,
 `Z`/`X` change octave) or a MIDI keyboard (notes, mod wheel CC1, pitch bend).
 
@@ -48,8 +55,10 @@ js/dsp.js         synth engine (runs in the AudioWorklet)
 js/params.js      parameters, level start patches, presets
 js/lessons.js     curriculum: lessons + challenges
 js/viz.js         oscilloscope, spectrum, filter response, envelopes
+js/fx.js          effect pedals (Web Audio graph)
+js/looper.js      loop station (recording, overdub, scheduling)
 js/app.js         UI, keyboard, MIDI, progress
-tests/            DSP and curriculum tests (npm test)
+tests/            DSP, curriculum and looper tests (npm test)
 ```
 
 Progress and your saved patches are stored in the browser's `localStorage`.

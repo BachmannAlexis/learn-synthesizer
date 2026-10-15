@@ -192,33 +192,78 @@ function mooglabDSP() {
     }
   }
 
-  // Exposed for unit tests (Node) — harmless in the worklet scope.
-  if (typeof globalThis !== 'undefined') globalThis.MooglabEngine = Engine;
+  // Two voices sharing one patch: voice 0 is played live, voice 1 plays the looper.
+  // Note events can carry `at` (an absolute sample frame) for sample-accurate timing.
+  class Rack {
+    constructor(sr) {
+      this.voices = [new Engine(sr), new Engine(sr)];
+      this.queue = [];
+      this.frame = 0;
+      this.tmp = new Float32Array(4096);
+    }
+    message(m) {
+      if (m.type === 'params') { for (const v of this.voices) Object.assign(v.p, m.p); return; }
+      if (m.type === 'clearQueue') { this.queue = this.queue.filter((e) => (e.voice | 0) !== (m.voice | 0)); return; }
+      if (m.at !== undefined && m.at > this.frame) {
+        let i = this.queue.length;
+        while (i > 0 && this.queue[i - 1].at > m.at) i--;
+        this.queue.splice(i, 0, m);
+        return;
+      }
+      this.apply(m);
+    }
+    apply(m) {
+      const v = this.voices[m.voice | 0];
+      if (m.type === 'noteOn') v.noteOn(m.note);
+      else if (m.type === 'noteOff') v.noteOff(m.note);
+      else if (m.type === 'bend') v.bend = m.value;
+      else if (m.type === 'allOff') v.allOff();
+    }
+    render(out, frame0) {
+      if (frame0 !== undefined) this.frame = frame0;
+      const n = out.length;
+      let i = 0;
+      while (i < n) {
+        while (this.queue.length && this.queue[0].at <= this.frame + i) this.apply(this.queue.shift());
+        const end = this.queue.length ? Math.min(n, Math.max(i + 1, this.queue[0].at - this.frame)) : n;
+        const seg = out.subarray(i, end);
+        this.voices[0].render(seg);
+        const loopVoice = this.voices[1];
+        if (loopVoice.envA.stage !== 0 || loopVoice.notes.length) {
+          const t = this.tmp.subarray(0, end - i);
+          loopVoice.render(t);
+          for (let k = 0; k < t.length; k++) seg[k] += t[k];
+        }
+        i = end;
+      }
+      this.frame += n;
+    }
+    telemetry() {
+      const [a, b] = this.voices;
+      const en = b.envA.v > a.envA.v ? b : a;
+      return { envA: en.envA.v, envF: en.envF.v, stageA: en.envA.stage, fc: en.fc, lfo: en.lfo, note: en.cur };
+    }
+  }
+
+  // Exposed for the main-thread fallback and unit tests — harmless in the worklet scope.
+  if (typeof globalThis !== 'undefined') { globalThis.MooglabEngine = Engine; globalThis.MooglabRack = Rack; }
 
   if (typeof AudioWorkletProcessor !== 'undefined' && typeof registerProcessor === 'function') {
     class MoogProcessor extends AudioWorkletProcessor {
       constructor() {
         super();
-        this.engine = new Engine(sampleRate);
+        this.rack = new Rack(sampleRate);
         this.counter = 0;
-        this.port.onmessage = (e) => {
-          const m = e.data, en = this.engine;
-          if (m.type === 'params') Object.assign(en.p, m.p);
-          else if (m.type === 'noteOn') en.noteOn(m.note);
-          else if (m.type === 'noteOff') en.noteOff(m.note);
-          else if (m.type === 'bend') en.bend = m.value;
-          else if (m.type === 'allOff') en.allOff();
-        };
+        this.port.onmessage = (e) => this.rack.message(e.data);
       }
       process(_inputs, outputs) {
         const out = outputs[0][0];
-        this.engine.render(out);
+        this.rack.render(out, currentFrame);
         for (let c = 1; c < outputs[0].length; c++) outputs[0][c].set(out);
         this.counter += out.length;
         if (this.counter >= 1024) {
           this.counter = 0;
-          const en = this.engine;
-          this.port.postMessage({ envA: en.envA.v, envF: en.envF.v, stageA: en.envA.stage, fc: en.fc, lfo: en.lfo, note: en.cur });
+          this.port.postMessage(this.rack.telemetry());
         }
         return true;
       }

@@ -67,7 +67,7 @@ test('release fades to silence', () => {
 });
 
 test('knob mapping round-trips', () => {
-  for (const d of PARAMS.filter((d) => d.type !== 'choice')) {
+  for (const d of PARAMS.filter((d) => !d.type)) {
     for (const v of [d.min, d.def, d.max]) assert.ok(Math.abs(fromNorm(d, toNorm(d, v)) - v) < 1e-6 * Math.max(1, Math.abs(v)), d.id);
   }
 });

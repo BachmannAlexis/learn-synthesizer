@@ -30,6 +30,7 @@ const LEVELS = [
     tips: [
       'Play with your computer keyboard: <kbd>A</kbd>–<kbd>;</kbd> are white keys, <kbd>W E T Y U O P</kbd> black keys, <kbd>Z</kbd>/<kbd>X</kbd> shift octave.',
       'Switch waveforms while holding a note. Compare the scope (shape) with the spectrum (harmonics).',
+      'Below the synth: effect pedals and a <b>Loop Station</b>. Press <kbd>R</kbd> to record a loop, then play over it.',
     ],
     challenges: [
       { id: 'l1-play', text: 'Play any note', check: () => true },
@@ -175,6 +176,8 @@ const LEVELS = [
       <p>Recipe for designing any sound: <b>source</b> (waves, octaves) → <b>tone</b> (filter) → <b>shape</b> (contours) → <b>life</b> (modulation).</p>`,
     tips: [
       'Save your own patches — they are stored in your browser.',
+      'Build a song: record a bass loop with <kbd>R</kbd>, press <kbd>R</kbd> again to stop recording, then change preset and play a lead over it. Press <kbd>R</kbd> again to overdub.',
+      'Pedals come after the synth, like a guitarist\'s board: Overdrive → Chorus → Echo → Reverb.',
       'Got a MIDI keyboard? Plug it in: notes, mod wheel (CC1) and pitch bend work.',
     ],
     challenges: [
