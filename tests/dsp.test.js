@@ -99,3 +99,25 @@ test('typed knob values are parsed in the units people use', () => {
   assert.strictEqual(parseValue(P.osc2Detune, '-5'), -5);
   assert.strictEqual(parseValue(P.cutoff, 'abc'), null);
 });
+
+test('each filter type shapes the sound as its name says', () => {
+  const { FILTER_TAPS } = require('../js/params.js');
+  assert.deepStrictEqual(globalThis.MooglabFilterTaps, FILTER_TAPS, 'engine and plot use the same filter mixes');
+  // A sine at 440 Hz (note 69) through each type, cutoff placed relative to it.
+  const level = (filterType, cutoff) => {
+    const p = { ...defaultPatch(), osc1Wave: 0, filterType, cutoff, resonance: 0, keyTrack: 0, drive: 0.5 };
+    const out = render(p, 0.6, { note: 69 });
+    return rms(out, 0.3 * SR, 0.6 * SR);
+  };
+  const ratio = (a, b) => 20 * Math.log10(a / b);
+  // Low-pass: passes a tone well below the cutoff, cuts one well above it.
+  assert.ok(ratio(level(0, 4000), level(0, 110)) > 30, 'LP 24');
+  assert.ok(ratio(level(1, 4000), level(1, 110)) > 15, 'LP 12 (gentler)');
+  // High-pass: the opposite.
+  assert.ok(ratio(level(2, 110), level(2, 4000)) > 30, 'HP 24');
+  assert.ok(ratio(level(3, 110), level(3, 4000)) > 15, 'HP 12');
+  // Band-pass: loudest when the tone sits at the cutoff.
+  assert.ok(ratio(level(4, 440), level(4, 5000)) > 12 && ratio(level(4, 440), level(4, 40)) > 12, 'BP');
+  // Notch: removes the tone at the cutoff, passes it elsewhere.
+  assert.ok(ratio(level(5, 4000), level(5, 440)) > 15, 'Notch');
+});

@@ -317,7 +317,8 @@
       const b = document.createElement('button');
       b.type = 'button';
       const name = I18N.option(o);
-      b.innerHTML = def.options === WAVES ? waveIcon(i) + `<span>${name}</span>` : `<span>${name}</span>`;
+      const icon = def.options === WAVES ? waveIcon(i) : def.icons ? `<svg viewBox="0 0 28 20" class="wave-ico" aria-hidden="true"><path d="${def.icons[i]}"/></svg>` : '';
+      b.innerHTML = icon + `<span>${name}</span>`;
       b.title = name;
       b.addEventListener('click', () => setParam(def.id, i));
       $('.choice-btns', el).appendChild(b);

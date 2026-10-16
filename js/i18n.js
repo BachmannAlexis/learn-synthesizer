@@ -102,7 +102,7 @@ const NAMES_FR = {
   params: {
     osc1Wave: 'Onde', osc1Range: 'Registre', osc2Wave: 'Onde', osc2Range: 'Registre', osc2Detune: 'Désaccord',
     osc3Wave: 'Onde', osc3Range: 'Registre', osc3Detune: 'Désaccord',
-    osc1Level: 'Osc 1', osc2Level: 'Osc 2', osc3Level: 'Osc 3', noiseLevel: 'Bruit',
+    filterType: 'Type', osc1Level: 'Osc 1', osc2Level: 'Osc 2', osc3Level: 'Osc 3', noiseLevel: 'Bruit',
     cutoff: 'Coupure', resonance: 'Emphase', drive: 'Saturation', filterEnvAmt: 'Qté env.', keyTrack: 'Suivi clavier',
     fA: 'Attaque', fD: 'Déclin', fS: 'Maintien', fR: 'Relâche', aA: 'Attaque', aD: 'Déclin', aS: 'Maintien', aR: 'Relâche',
     lfoRate: 'Vitesse LFO', lfoWave: 'Onde LFO', lfoPitch: '→ Hauteur', lfoFilter: '→ Filtre', glide: 'Glissando',
@@ -123,6 +123,7 @@ const NAMES_FR = {
     reverb: { name: 'Réverb', blurb: 'Place le son dans une pièce ou une salle.' },
   },
   options: {
+    'LP 24': 'PB 24', 'LP 12': 'PB 12', 'HP 24': 'PH 24', 'HP 12': 'PH 12', BP: 'Bande', Notch: 'Coupe',
     Sine: 'Sinus', Tri: 'Triangle', Saw: 'Scie', Square: 'Carré', Wide: 'Large', Narrow: 'Étroit', 'S&H': 'Aléatoire',
   },
 };

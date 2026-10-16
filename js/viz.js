@@ -100,12 +100,24 @@ const Viz = (() => {
     g.stroke();
   }
 
-  // Analytic 4-pole ladder: H(s) = 1 / ((1 + s/wc)^4 + k)
-  function ladderMag(f, fc, k) {
-    const b = f / fc, a = 1 - b * b;
-    const re = a * a - 4 * b * b + k, im = 4 * b * a;
-    return 1 / Math.sqrt(re * re + im * im);
+  // Analytic multimode ladder. Each stage is L = 1/(1 + s/wc); the feedback makes the
+  // ladder input u = x / (1 + k L^4); the output mixes u and the four stage outputs:
+  // H = (c0 + c1 L + c2 L^2 + c3 L^3 + c4 L^4) / (1 + k L^4).   (LP 24 = 1/((1+s)^4 + k))
+  function ladderMag(f, fc, k, taps) {
+    const b = f / fc, d = 1 + b * b;
+    const lr = 1 / d, li = -b / d; // L
+    let pr = 1, pi = 0, nr = 0, ni = 0;
+    const pows = [];
+    for (let i = 0; i <= 4; i++) {
+      pows.push([pr, pi]);
+      nr += taps[i] * pr; ni += taps[i] * pi;
+      [pr, pi] = [pr * lr - pi * li, pr * li + pi * lr];
+    }
+    const [l4r, l4i] = pows[4];
+    const dr = 1 + k * l4r, di = k * l4i;
+    return Math.sqrt((nr * nr + ni * ni) / (dr * dr + di * di));
   }
+  const SLOPES = ['−24 dB/oct', '−12 dB/oct', '+24 dB/oct', '+12 dB/oct', '±6 dB/oct', ''];
 
   function filter(canvas, p, liveFc) {
     const { g, w, h } = setup(canvas);
@@ -114,14 +126,15 @@ const Viz = (() => {
     grid(g, w, h, freqTicks.map((f) => fx(f, w)), [-48, -24, 0].map(dy));
     freqTicks.forEach((f) => label(g, f >= 1000 ? f / 1000 + 'k' : f, fx(f, w) + 3, h - 4));
     label(g, '0 dB', w - 4, dy(0) - 3, 'right');
-    label(g, '−24 dB/oct', w - 4, 12, 'right');
+    const type = p.filterType | 0, taps = FILTER_TAPS[type] || FILTER_TAPS[0];
+    label(g, I18N.option(FILTER_TYPES[type]) + (SLOPES[type] ? ' · ' + SLOPES[type] : ''), w - 4, 12, 'right');
     const k = p.resonance * 4 * 0.98; // keep the ideal curve finite at full emphasis
-    const comp = 1 + p.resonance * 4 * 0.35;
+    const comp = type <= 1 ? 1 + p.resonance * 4 * 0.35 : 1;
     const curve = (fc, color, width, fill) => {
       g.beginPath();
       for (let x = 0; x <= w; x += 2) {
         const f = fmin * Math.pow(fmax / fmin, x / w);
-        const db = 20 * Math.log10(ladderMag(f, fc, k) * comp);
+        const db = 20 * Math.log10(Math.max(1e-6, ladderMag(f, fc, k, taps) * comp));
         const y = Math.max(-2, Math.min(h + 2, dy(db)));
         x ? g.lineTo(x, y) : g.moveTo(x, y);
       }

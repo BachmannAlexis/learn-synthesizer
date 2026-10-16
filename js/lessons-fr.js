@@ -45,16 +45,25 @@ const LESSONS_FR = {
         <li><b>Saturation</b> — sur le Minimoog, les musiciens rebouclaient la sortie dans le mélangeur pour surcharger les
         transistors. La saturation (tanh) ajoute des harmoniques chaudes et du « grain ».</li>
       </ul>
-      <p>Observez la courbe de réponse : plus d'emphase <b>amincit aussi les basses</b> — un trait typique du vrai ladder.</p>`,
+      <p>Observez la courbe de réponse : plus d'emphase <b>amincit aussi les basses</b> — un trait typique du vrai ladder.</p>
+      <p><b>Types de filtre.</b> Le Minimoog n'a que le passe-bas ladder, mais en mélangeant les sorties des quatre étages
+      de l'échelle, les Moog plus récents (et les Oberheim) obtiennent d'autres formes. Changez le <b>Type</b> et regardez la courbe :</p>
+      <ul>
+        <li><b>PB 24 / PB 12</b> — passe-bas : garde les graves. 24 dB/oct est la pente raide classique du Moog ; 12 dB/oct est plus douce et plus brillante.</li>
+        <li><b>PH 24 / PH 12</b> — passe-haut : retire les graves. Son fin, aérien, utile pour laisser la place à une basse.</li>
+        <li><b>Bande</b> — passe-bande : ne garde qu'une bande autour de la coupure. Nasal, façon téléphone, il « parle » quand on le balaie.</li>
+        <li><b>Coupe</b> — coupe-bande (réjecteur) : retire une bande étroite autour de la coupure. Discret à l'arrêt, proche d'un phaser quand il bouge.</li>
+      </ul>`,
     tips: [
       'Tenez une note et balayez lentement la coupure — le fameux « wah ».',
       'Montez l\'emphase, puis balayez la coupure : on entend chanter les harmoniques une à une.',
     ],
     challenges: {
-      'l2-dark': 'Étouffez une onde en scie : coupure sous 300 Hz',
+      'l2-dark': 'Étouffez une onde en scie : passe-bas, coupure sous 300 Hz',
       'l2-peak': 'Créez un pic résonant : emphase au-dessus de 70 % et coupure entre 500 Hz et 3 kHz',
       'l2-selfosc': 'Faites siffler le filtre tout seul : emphase ≥ 95 %',
       'l2-drive': 'Saturez le ladder : saturation au-dessus de ×2,5',
+      'l2-types': 'Amincissez le son : un type passe-haut avec la coupure au-dessus de 1 kHz',
     },
   },
   3: {

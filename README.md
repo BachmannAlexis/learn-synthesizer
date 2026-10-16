@@ -18,7 +18,7 @@ The computer keyboard uses physical key positions, so it plays the same on QWERT
 | Level | Topic | Unlocks |
 |---|---|---|
 | 1 | The Oscillator | waveform, octave range (32'–2'), scope + spectrum |
-| 2 | The Ladder Filter | cutoff, emphasis (resonance, self-oscillation), drive, response plot |
+| 2 | The Ladder Filter | filter type (LP 24/12, HP 24/12, band-pass, notch), cutoff, emphasis (resonance, self-oscillation), drive, response plot |
 | 3 | Contours | filter & loudness ADSR, contour amount, envelope graph |
 | 4 | Three Oscillators | Osc 2/3, detune, mixer, noise |
 | 5 | Modulation & Performance | LFO → pitch/filter, mod & pitch wheels, glide, key tracking |

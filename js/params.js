@@ -2,6 +2,25 @@
 const WAVES = ['Sine', 'Tri', 'Saw', 'Square', 'Wide', 'Narrow'];
 const RANGES = ["32'", "16'", "8'", "4'", "2'"];
 const LFO_WAVES = ['Sine', 'Tri', 'Square', 'Saw', 'S&H'];
+const FILTER_TYPES = ['LP 24', 'LP 12', 'HP 24', 'HP 12', 'BP', 'Notch'];
+// Mix of the ladder input and its 4 stage outputs for each type (same table as in dsp.js).
+const FILTER_TAPS = [
+  [0, 0, 0, 0, 1],
+  [0, 0, 1, 0, 0],
+  [1, -4, 6, -4, 1],
+  [1, -2, 1, 0, 0],
+  [0, 2, -2, 0, 0],
+  [1, -2, 2, 0, 0],
+];
+// Small response-shape icons for the type buttons (28x20 viewBox).
+const FILTER_ICONS = [
+  'M2 6 H13 Q17 6 18 9 L22 18',
+  'M2 6 H13 Q17 6 19 10 L26 16',
+  'M6 18 L10 9 Q11 6 15 6 H26',
+  'M2 16 L9 10 Q11 6 15 6 H26',
+  'M3 18 L10 8 Q14 3 18 8 L25 18',
+  'M2 6 H9 Q12 6 13 12 L14 18 L15 12 Q16 6 19 6 H26',
+];
 
 // curve: 'lin' | 'log' ; fmt: how to display
 const PARAMS = [
@@ -20,6 +39,7 @@ const PARAMS = [
   { id: 'osc3Level', label: 'Osc 3', section: 'mixer', min: 0, max: 1, def: 0, fmt: 'pct', level: 4 },
   { id: 'noiseLevel', label: 'Noise', section: 'mixer', min: 0, max: 1, def: 0, fmt: 'pct', level: 4 },
   // Filter
+  { id: 'filterType', label: 'Type', section: 'filter', type: 'choice', options: FILTER_TYPES, icons: FILTER_ICONS, def: 0, level: 2 },
   { id: 'cutoff', label: 'Cutoff', section: 'filter', min: 20, max: 20000, def: 20000, curve: 'log', fmt: 'hz', level: 2 },
   { id: 'resonance', label: 'Emphasis', section: 'filter', min: 0, max: 1, def: 0, fmt: 'pct', level: 2 },
   { id: 'drive', label: 'Drive', section: 'filter', min: 0.5, max: 5, def: 1, curve: 'log', fmt: 'x', level: 2 },
@@ -143,6 +163,17 @@ const PRESETS = {
     osc1Wave: 3, osc2Wave: 2, osc2Detune: 0.05, osc1Level: 0.8, osc2Level: 0.6,
     cutoff: 2000, resonance: 0.2, glide: 0.12, lfoRate: 5.8, lfoWave: 0, lfoPitch: 0.35, modWheel: 0.6,
   },
+  'Thin High-pass': { osc1Wave: 2, osc1Range: 1, filterType: 2, cutoff: 900, resonance: 0.35 },
+  'Talking Band-pass': {
+    osc1Wave: 2, osc2Wave: 3, osc2Detune: 0.08, osc1Level: 0.8, osc2Level: 0.6,
+    filterType: 4, cutoff: 900, resonance: 0.55, keyTrack: 0.5,
+    lfoRate: 0.7, lfoWave: 1, lfoPitch: 0, lfoFilter: 1.6, modWheel: 0.8,
+  },
+  'Notch Sweep': {
+    osc1Wave: 2, osc2Wave: 2, osc2Detune: 0.1, osc1Level: 0.7, osc2Level: 0.7,
+    filterType: 5, cutoff: 1200, resonance: 0.2,
+    lfoRate: 0.25, lfoWave: 0, lfoPitch: 0, lfoFilter: 2.5, modWheel: 1,
+  },
   'Fat Bass': {
     osc1Wave: 2, osc1Range: 1, osc2Wave: 2, osc2Range: 1, osc2Detune: 0.1, osc3Wave: 3, osc3Range: 0,
     osc1Level: 0.8, osc2Level: 0.7, osc3Level: 0.6, noiseLevel: 0,
@@ -264,4 +295,4 @@ function parseValue(def, text, current) {
   return Math.min(def.max, Math.max(def.min, v));
 }
 
-if (typeof module !== 'undefined') module.exports = { parseValue, PARAMS, PRESETS, PEDALS, LEVEL_PATCHES, defaultPatch, patchForLevel, presetLevel, toNorm, fromNorm, formatValue };
+if (typeof module !== 'undefined') module.exports = { FILTER_TAPS, parseValue, PARAMS, PRESETS, PEDALS, LEVEL_PATCHES, defaultPatch, patchForLevel, presetLevel, toNorm, fromNorm, formatValue };

@@ -56,16 +56,25 @@ const LEVELS = [
         <li><b>Drive</b> — on the Minimoog, players patched the output back into the mixer to overload the
         transistors. The tanh saturation adds warm harmonics and "growl".</li>
       </ul>
-      <p>Notice in the response plot: more emphasis also <b>thins the bass</b> — a real ladder trait.</p>`,
+      <p>Notice in the response plot: more emphasis also <b>thins the bass</b> — a real ladder trait.</p>
+      <p><b>Filter types.</b> The Minimoog only has the low-pass ladder, but by mixing the outputs of the four
+      ladder stages later Moogs (and Oberheims) get other shapes. Switch <b>Type</b> and watch the curve:</p>
+      <ul>
+        <li><b>LP 24 / LP 12</b> — low-pass: keeps the lows. 24 dB/oct is the classic, steep Moog slope; 12 dB/oct is gentler and brighter.</li>
+        <li><b>HP 24 / HP 12</b> — high-pass: removes the lows. Thin, airy, good to make room for a bass line.</li>
+        <li><b>BP</b> — band-pass: keeps only a band around the cutoff. Nasal, telephone-like, "talking" when swept.</li>
+        <li><b>Notch</b> — removes a narrow band around the cutoff. Subtle when still, phaser-like when it moves.</li>
+      </ul>`,
     tips: [
       'Hold a note and sweep the cutoff slowly — the classic "wah".',
       'Set emphasis high, then sweep cutoff: you hear individual harmonics sing.',
     ],
     challenges: [
-      { id: 'l2-dark', text: 'Make a saw sound muffled: cutoff below 300 Hz', check: (p) => p.osc1Wave === 2 && p.cutoff < 300 },
+      { id: 'l2-dark', text: 'Make a saw sound muffled: low-pass, cutoff below 300 Hz', check: (p) => p.osc1Wave === 2 && p.filterType <= 1 && p.cutoff < 300 },
       { id: 'l2-peak', text: 'Create a resonant peak: emphasis above 70% with cutoff between 500 Hz and 3 kHz', check: (p) => p.resonance > 0.7 && p.cutoff > 500 && p.cutoff < 3000 },
       { id: 'l2-selfosc', text: 'Make the filter whistle on its own: emphasis ≥ 95%', check: (p) => p.resonance >= 0.95 },
       { id: 'l2-drive', text: 'Overdrive the ladder: drive above ×2.5', check: (p) => p.drive > 2.5 },
+      { id: 'l2-types', text: 'Thin it out: a high-pass type with the cutoff above 1 kHz', check: (p) => (p.filterType === 2 || p.filterType === 3) && p.cutoff > 1000 },
     ],
   },
   {
@@ -93,7 +102,7 @@ const LEVELS = [
     challenges: [
       { id: 'l3-pluck', text: 'Make a pluck: attack < 10 ms, sustain < 10%, decay < 500 ms', check: (p) => p.aA < 0.01 && p.aS < 0.1 && p.aD < 0.5 },
       { id: 'l3-swell', text: 'Make a slow swell: loudness attack above 1 s', check: (p) => p.aA > 1 },
-      { id: 'l3-bwow', text: '"Bwow": cutoff < 400 Hz, contour amount > 3 oct, filter sustain < 20%', check: (p) => p.cutoff < 400 && p.filterEnvAmt > 3 && p.fS < 0.2 },
+      { id: 'l3-bwow', text: '"Bwow": cutoff < 400 Hz, contour amount > 3 oct, filter sustain < 20%', check: (p) => p.filterType <= 1 && p.cutoff < 400 && p.filterEnvAmt > 3 && p.fS < 0.2 },
       { id: 'l3-tail', text: 'Let notes ring after release: loudness release above 1.5 s', check: (p) => p.aR > 1.5 },
     ],
   },

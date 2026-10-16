@@ -73,23 +73,47 @@ function mooglabDSP() {
     }
   }
 
+  // Filter types as mixes of the ladder's input (u) and its four stage outputs (multimode ladder,
+  // as on later Moogs and Oberheims). Must match FILTER_TAPS in params.js (the plot uses it).
+  // 0 LP24, 1 LP12, 2 HP24, 3 HP12, 4 BP12, 5 Notch
+  const FILTER_TAPS = [
+    [0, 0, 0, 0, 1],
+    [0, 0, 1, 0, 0],
+    [1, -4, 6, -4, 1],
+    [1, -2, 1, 0, 0],
+    [0, 2, -2, 0, 0],
+    [1, -2, 2, 0, 0],
+  ];
+
   // Moog transistor ladder: four one-pole stages with tanh saturation and
   // global negative feedback (resonance / "emphasis"), run 2x oversampled.
   class Ladder {
-    constructor(sr) { this.fsOS = sr * 2; this.s1 = this.s2 = this.s3 = this.s4 = 0; this.xPrev = 0; }
-    process(x, fc, k, drive) {
+    constructor(sr) { this.fsOS = sr * 2; this.s1 = this.s2 = this.s3 = this.s4 = 0; this.xPrev = 0; this.u = 0; }
+    process(x, fc, k, drive, taps = FILTER_TAPS[0]) {
       const g = 1 - Math.exp(-TAU * fc / this.fsOS);
+      const sat = taps[0] === 0; // low-pass mixes don't use the input tap
+      let u = 0;
       for (let i = 0; i < 2; i++) {
         const inp = i === 0 ? 0.5 * (x + this.xPrev) : x;
-        const u = Math.tanh(drive * inp - k * this.s4);
-        const t1 = Math.tanh(this.s1), t2 = Math.tanh(this.s2), t3 = Math.tanh(this.s3), t4 = Math.tanh(this.s4);
-        this.s1 += g * (u - t1);
-        this.s2 += g * (t1 - t2);
-        this.s3 += g * (t2 - t3);
-        this.s4 += g * (t3 - t4);
+        u = Math.tanh(drive * inp - k * this.s4);
+        if (sat) {
+          // Low-pass: the saturating transistor stages of the original ladder.
+          const t1 = Math.tanh(this.s1), t2 = Math.tanh(this.s2), t3 = Math.tanh(this.s3), t4 = Math.tanh(this.s4);
+          this.s1 += g * (u - t1);
+          this.s2 += g * (t1 - t2);
+          this.s3 += g * (t2 - t3);
+          this.s4 += g * (t3 - t4);
+        } else {
+          // Mixed types (HP, BP, notch) subtract stage outputs, so the stages must be linear and
+          // in step (each one fed the previous stage's new value) for the mix to cancel cleanly.
+          this.s1 += g * (u - this.s1);
+          this.s2 += g * (this.s1 - this.s2);
+          this.s3 += g * (this.s2 - this.s3);
+          this.s4 += g * (this.s3 - this.s4);
+        }
       }
       this.xPrev = x;
-      return this.s4;
+      return taps[0] * u + taps[1] * this.s1 + taps[2] * this.s2 + taps[3] * this.s3 + taps[4] * this.s4;
     }
   }
 
@@ -135,7 +159,10 @@ function mooglabDSP() {
       const lfoInc = p.lfoRate / sr;
       const lfoWave = p.lfoWave | 0;
       const k = p.resonance * 4.2;
-      const comp = 1 + k * 0.35;
+      const ftype = p.filterType | 0;
+      const taps = FILTER_TAPS[ftype] || FILTER_TAPS[0];
+      // Resonance thins the bass of low-pass types; make up some of that level.
+      const comp = ftype <= 1 ? 1 + k * 0.35 : 1;
       const lv = [p.osc1Level, p.osc2Level, p.osc3Level];
       const wv = [p.osc1Wave | 0, p.osc2Wave | 0, p.osc3Wave | 0];
       const tune = [
@@ -180,7 +207,7 @@ function mooglabDSP() {
         const octs = p.filterEnvAmt * ef + lfo * lfoFilter + p.keyTrack * (this.cur - 60) / 12;
         let fc = p.cutoff * Math.pow(2, octs);
         fc = fc < 20 ? 20 : fc > nyq ? nyq : fc;
-        const y = this.filter.process(mix, fc, k, p.drive) * comp;
+        const y = this.filter.process(mix, fc, k, p.drive, taps) * comp;
 
         // VCA
         const ea = this.envA.next();
@@ -246,7 +273,7 @@ function mooglabDSP() {
   }
 
   // Exposed for the main-thread fallback and unit tests — harmless in the worklet scope.
-  if (typeof globalThis !== 'undefined') { globalThis.MooglabEngine = Engine; globalThis.MooglabRack = Rack; }
+  if (typeof globalThis !== 'undefined') { globalThis.MooglabEngine = Engine; globalThis.MooglabRack = Rack; globalThis.MooglabFilterTaps = FILTER_TAPS; }
 
   if (typeof AudioWorkletProcessor !== 'undefined' && typeof registerProcessor === 'function') {
     class MoogProcessor extends AudioWorkletProcessor {
