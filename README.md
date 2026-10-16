@@ -9,7 +9,7 @@ challenges to try and live visualizations.
 
 Two sections, switched from the top bar:
 
-- **Learn / Apprendre** — six levels, each with a lesson, challenges (stars) and the controls it introduces.
+- **Learn / Apprendre** — six levels, each with three key points (full lesson one click away), challenges (stars), the controls it introduces and a **Demo** button: 15–20 s where the app plays and turns the knobs itself, with captions.
 - **Studio** — the whole synth unlocked for free play: presets, pedals, loop station and all scopes. Your Studio sound is saved separately from the lessons.
 
 The interface and all lessons are in **English and French** (EN/FR switch; it starts in your browser's language).
@@ -70,6 +70,7 @@ js/i18n.js        interface translations and language switch
 js/viz.js         oscilloscope, spectrum, filter response, envelopes
 js/fx.js          effect pedals (Web Audio graph)
 js/looper.js      loop station (recording, overdub, scheduling)
+js/demos.js       auto-play demo script for each level
 js/app.js         UI, keyboard, MIDI, progress
 tests/            DSP, curriculum, looper and translation tests (npm test)
 .github/workflows/pages.yml   tests, then publishes to GitHub Pages on every push to main

@@ -3,6 +3,11 @@ const LESSONS_FR = {
   1: {
     title: 'L\'oscillateur',
     subtitle: 'Hauteur et timbre',
+    summary: [
+      'Un oscillateur répète une forme d\'onde : sa vitesse donne la <b>hauteur</b>, sa forme le <b>timbre</b>.',
+      'Sinus : pur ; triangle : doux ; scie : brillante (toutes les harmoniques) ; carré : creux (harmoniques impaires).',
+      'Registre en pieds : 32\' le plus grave, 8\' normal, 2\' le plus aigu.',
+    ],
     theory: `
       <p>Tout son est de l'air qui vibre. Un synthétiseur commence par un <b>oscillateur</b> — sur un Moog, c'est un
       <b>VCO</b> (oscillateur contrôlé en tension) : un circuit dont la sortie répète une forme un grand nombre de fois par seconde.</p>
@@ -34,6 +39,11 @@ const LESSONS_FR = {
   2: {
     title: 'Le filtre ladder',
     subtitle: 'Synthèse soustractive',
+    summary: [
+      'Synthèse soustractive : on part d\'un son brillant et on <b>retire des harmoniques</b> avec un filtre.',
+      'La <b>coupure</b> fixe où le filtre agit ; l\'<b>emphase</b> ajoute un pic — au maximum, le filtre siffle tout seul.',
+      'Le <b>type</b> choisit ce qu\'on garde : les graves (PB), les aigus (PH), une bande (Bande) ou tout sauf une bande (Coupe).',
+    ],
     theory: `
       <p>La synthèse Moog est <b>soustractive</b> : on part d'une onde riche en harmoniques et on <b>retire</b> des harmoniques avec un filtre.</p>
       <p>Le <b>filtre à échelle de transistors</b> (« ladder ») breveté par Bob Moog en 1966 est un <b>passe-bas</b> fait de quatre étages
@@ -69,6 +79,11 @@ const LESSONS_FR = {
   3: {
     title: 'Les enveloppes',
     subtitle: 'Façonner le son dans le temps',
+    summary: [
+      'Une enveloppe façonne le son dans le temps : <b>Attaque, Déclin, Maintien</b> (un niveau), <b>Relâche</b>.',
+      'L\'enveloppe du volume règle le volume ; celle du filtre ouvre et ferme la coupure.',
+      'Déclin court sans maintien = son pincé ; attaque lente = son qui enfle ; grande enveloppe de filtre = « bwow ».',
+    ],
     theory: `
       <p>Les vrais instruments évoluent dans le temps : une corde pincée est brillante puis s'éteint ; un violon enfle.
       Moog appelait ses générateurs d'enveloppe des <b>« contour generators »</b>. Chacun produit une tension de commande quand vous appuyez sur une touche :</p>
@@ -95,6 +110,11 @@ const LESSONS_FR = {
   4: {
     title: 'Trois oscillateurs',
     subtitle: 'Le mélangeur du Minimoog',
+    summary: [
+      'Le Minimoog mélange <b>trois oscillateurs et du bruit</b>.',
+      'Désaccordez-en légèrement deux pour un son épais et vivant ; superposez les octaves pour du poids.',
+      'Accordez-en un à la quinte (+7) pour des accords de puissance ; le bruit seul donne le vent et les vagues.',
+    ],
     theory: `
       <p>Le <b>Minimoog Model D</b> (1970) possède <b>trois VCO</b> et une source de <b>bruit</b> qui entrent dans un <b>mélangeur</b>.
       C'est en combinant les oscillateurs qu'on obtient le gros son Moog :</p>
@@ -120,6 +140,11 @@ const LESSONS_FR = {
   5: {
     title: 'Modulation et jeu',
     subtitle: 'LFO, molettes, glissando',
+    summary: [
+      'Un <b>LFO</b> fait bouger lentement une autre commande : sur la hauteur c\'est le vibrato, sur le filtre le wobble.',
+      'La <b>molette Mod</b> dose le LFO ; la molette de hauteur fait glisser les notes.',
+      'Le <b>glissando</b> relie les notes ; le suivi clavier garde les aigus brillants.',
+    ],
     theory: `
       <p><b>Moduler</b>, c'est laisser un signal tourner automatiquement le bouton d'un autre. Un <b>LFO</b>
       (oscillateur basse fréquence, sous ~20 Hz) est trop lent pour s'entendre, mais il peut faire onduler la hauteur ou la coupure.
@@ -146,6 +171,11 @@ const LESSONS_FR = {
   6: {
     title: 'Bac à sable Model D',
     subtitle: 'Tout le synthé + presets',
+    summary: [
+      'Tout est débloqué : étudiez les presets et demandez-vous <i>pourquoi</i> chacun sonne ainsi.',
+      'Recette : <b>source</b> (ondes) → <b>timbre</b> (filtre) → <b>forme</b> (enveloppes) → <b>vie</b> (modulation).',
+      'Ajoutez des pédales et enregistrez des boucles pour construire un morceau.',
+    ],
     theory: `
       <p>Vous connaissez maintenant chaque section d'un monosynthé de type Minimoog. Étudiez les presets — ouvrez-en un,
       puis expliquez-vous <i>pourquoi</i> il sonne ainsi :</p>

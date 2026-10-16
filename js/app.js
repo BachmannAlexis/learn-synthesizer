@@ -212,6 +212,7 @@
       <div class="knob-label">${I18N.param(def)}</div>
       <button type="button" class="knob-value" title="${I18N.t('typeValue')}"></button>`;
     el.tabIndex = 0;
+    el.dataset.param = def.id;
     el.setAttribute('role', 'slider');
     el.setAttribute('aria-label', I18N.param(def));
     el.title = I18N.t('knobTitle');
@@ -311,6 +312,7 @@
   function makeChoice(def) {
     const el = document.createElement('div');
     el.className = 'choice';
+    el.dataset.param = def.id;
     const label = I18N.param(def);
     el.innerHTML = `<div class="choice-label">${label}</div><div class="choice-btns" role="radiogroup" aria-label="${label}"></div>`;
     const btns = def.options.map((o, i) => {
@@ -410,6 +412,7 @@
     const L = LEVELS[level - 1], T = I18N.lesson(L);
     $('#lesson-kicker').textContent = I18N.t('levelKicker', { n: L.n, sub: T.subtitle });
     $('#lesson-title').textContent = T.title;
+    $('#lesson-summary').innerHTML = T.summary.map((x) => `<li>${x}</li>`).join('');
     $('#lesson-theory').innerHTML = T.theory;
     $('#lesson-tips').innerHTML = T.tips.map((x) => `<li>${x}</li>`).join('');
     renderChallenges();
@@ -432,11 +435,8 @@
     $$('#flow [data-block]').forEach((b) => b.classList.toggle('on', V.flow.includes(b.dataset.block) || (b.dataset.block === 'vco' && V.flow.includes('vco3'))));
     $('#flow [data-block="vco"] b').textContent = V.flow.includes('vco3') ? 'VCO ×3' : 'VCO';
     $$('.viz').forEach((v) => (v.hidden = !V.viz.includes(v.dataset.viz)));
-    if (!studio) {
-      buildLesson();
-      // On phones the lesson text starts folded so the synth is reachable without a long scroll.
-      $('#lesson-more').open = !window.matchMedia('(max-width: 860px)').matches;
-    }
+    if (!studio) buildLesson();
+    renderDemoButtons();
   }
 
   function renderChallenges() {
@@ -452,7 +452,7 @@
   }
 
   function checkChallenges() {
-    if (isStudio()) return;
+    if (isStudio() || demo.running) return; // the demo plays for you; stars are yours to earn
     const L = LEVELS[level - 1];
     let gained = null;
     for (const c of L.challenges) {
@@ -478,6 +478,7 @@
   }
 
   function goLevel(n) {
+    stopDemo();
     allOff();
     levelPatches[level] = { ...patch };
     level = n;
@@ -495,6 +496,7 @@
   function setMode(m, { scroll = true } = {}) {
     if (m !== 'learn' && m !== 'studio') m = 'learn';
     if (m !== mode) {
+      stopDemo();
       allOff();
       if (isStudio()) store.set('studio', synthOf(patch)); else levelPatches[level] = { ...patch };
       mode = m;
@@ -532,6 +534,107 @@
     $('#mod-wheel').value = patch.modWheel;
     sendParams();
     toast(I18N.t(isStudio() ? 'patchInit' : 'patchReset'));
+  }
+
+  // ---------- demos ----------
+  // Each level has a short auto-play demo: the app plays notes and moves the knobs itself.
+  const demo = { running: false, level: 0, timers: [], rafs: new Set(), saved: null, notes: new Set(), t0: 0, total: 0 };
+
+  function renderDemoButtons() {
+    for (const [id, n] of [['#demo-btn', level], ['#studio-demo-btn', LEVELS.length]]) {
+      const b = $(id);
+      const on = demo.running && demo.level === n;
+      b.textContent = on ? I18N.t('demoStop') : I18N.t('demo', { s: Math.round(demoLength(n)) });
+      b.setAttribute('aria-pressed', on);
+    }
+  }
+
+  function applyPatch(p) {
+    patch = withFx(p);
+    if (isStudio()) store.set('studio', synthOf(patch));
+    Object.values(controls).forEach((f) => f());
+    $('#mod-wheel').value = patch.modWheel;
+    sendParams();
+  }
+
+  function demoNote(n, on) {
+    send({ type: on ? 'noteOn' : 'noteOff', note: n });
+    if (on) demo.notes.add(n); else demo.notes.delete(n);
+    if (!held.has(n)) $$(`.key[data-note="${n}"]`).forEach((k) => k.classList.toggle('down', on));
+  }
+
+  function highlight(ids) {
+    $$('.demo-focus').forEach((e) => e.classList.remove('demo-focus'));
+    for (const id of ids) {
+      const el = id === 'preset' ? $('#preset-select') : $(`[data-param="${id}"]`);
+      if (el) el.classList.add('demo-focus');
+    }
+  }
+
+  async function startDemo(n) {
+    if (demo.running) { const same = demo.level === n; stopDemo(); if (same) return; }
+    await startAudio();
+    allOff();
+    const D = DEMOS[n];
+    Object.assign(demo, { running: true, level: n, saved: synthOf(patch), timers: [], t0: performance.now(), total: demoLength(n) * 1000 });
+    applyPatch({ ...patchForLevel(n), ...D.start });
+    $('#demo-bar').hidden = false;
+    renderDemoButtons();
+    if (window.innerWidth < 860) $('.case').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    let at = 0;
+    D.steps.forEach((step, i) => {
+      demo.timers.push(setTimeout(() => runStep(step, i, D.steps.length), at * 1000));
+      at += step.dur;
+    });
+    demo.timers.push(setTimeout(() => { stopDemo(); toast(I18N.t('demoEnded')); }, at * 1000 + 400));
+    const tick = () => {
+      if (!demo.running) return;
+      $('#demo-progress').style.width = Math.min(100, ((performance.now() - demo.t0) / demo.total) * 100) + '%';
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  function runStep(step, i, count) {
+    $('#demo-caption').textContent = step.say[I18N.lang] || step.say.en;
+    $('#demo-step').textContent = `${i + 1}/${count}`;
+    if (step.preset) applyPatch({ ...defaultPatch(), ...PRESETS[step.preset] });
+    for (const [id, v] of Object.entries(step.set || {})) setParam(id, v);
+    highlight([...(step.preset ? ['preset'] : []), ...Object.keys(step.set || {}), ...Object.keys(step.ramp || {})]);
+    // Smooth knob moves, in knob position (so frequency sweeps sound even).
+    for (const [id, target] of Object.entries(step.ramp || {})) {
+      const def = PARAM_BY_ID[id], from = toNorm(def, patch[id]), to = toNorm(def, target);
+      const start = performance.now(), len = step.dur * 900;
+      const move = (now) => {
+        if (!demo.running) return;
+        const k = Math.min(1, (now - start) / len);
+        setParam(id, fromNorm(def, from + (to - from) * k));
+        if (k < 1) requestAnimationFrame(move);
+      };
+      requestAnimationFrame(move);
+    }
+    // Notes spread evenly over the step; legato notes overlap so glide can be heard.
+    const notes = step.notes || [];
+    const gap = (step.dur * 1000) / Math.max(1, notes.length);
+    notes.forEach((n, j) => {
+      const len = notes.length === 1 ? step.dur * 920 : gap * (step.legato ? 1.15 : 0.75);
+      demo.timers.push(setTimeout(() => demoNote(n, true), j * gap));
+      demo.timers.push(setTimeout(() => demoNote(n, false), j * gap + len));
+    });
+  }
+
+  function stopDemo() {
+    if (!demo.running) return;
+    demo.running = false;
+    demo.timers.forEach(clearTimeout);
+    demo.timers = [];
+    [...demo.notes].forEach((n) => demoNote(n, false));
+    send({ type: 'allOff' });
+    highlight([]);
+    applyPatch(demo.saved);
+    $('#demo-bar').hidden = true;
+    $('#demo-progress').style.width = '0';
+    renderDemoButtons();
   }
 
   // ---------- presets ----------
@@ -831,6 +934,9 @@
     $('#power').addEventListener('click', () => startAudio());
     for (const ev of ['pointerup', 'touchend', 'keydown', 'click']) document.addEventListener(ev, wake, true);
     $('#reset').addEventListener('click', resetPatch);
+    $('#demo-btn').addEventListener('click', () => startDemo(level));
+    $('#studio-demo-btn').addEventListener('click', () => startDemo(LEVELS.length));
+    $('#demo-stop').addEventListener('click', stopDemo);
     $('#mode-learn').addEventListener('click', (e) => { e.preventDefault(); setMode('learn'); });
     $('#mode-studio').addEventListener('click', (e) => { e.preventDefault(); setMode('studio'); });
     window.addEventListener('hashchange', () => setMode(location.hash === '#studio' ? 'studio' : 'learn'));

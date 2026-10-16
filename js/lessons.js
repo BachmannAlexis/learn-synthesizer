@@ -9,6 +9,11 @@ const LEVELS = [
     n: 1,
     title: 'The Oscillator',
     subtitle: 'Pitch & timbre',
+    summary: [
+      'An oscillator repeats a wave shape: how fast is the <b>pitch</b>, the shape is the <b>timbre</b>.',
+      'Sine is pure, triangle soft, saw bright (all harmonics), square hollow (odd harmonics).',
+      'Range is in feet: 32\' lowest, 8\' normal, 2\' highest.',
+    ],
     flow: ['vco', 'out'],
     viz: ['scope', 'spectrum'],
     theory: `
@@ -43,6 +48,11 @@ const LEVELS = [
     n: 2,
     title: 'The Ladder Filter',
     subtitle: 'Subtractive synthesis',
+    summary: [
+      'Subtractive synthesis: start bright, then <b>remove harmonics</b> with a filter.',
+      '<b>Cutoff</b> sets where the filter bites; <b>emphasis</b> adds a peak — at max the filter whistles on its own.',
+      '<b>Type</b> picks what is kept: lows (LP), highs (HP), a band (BP) or all but a band (notch).',
+    ],
     flow: ['vco', 'vcf', 'out'],
     viz: ['scope', 'spectrum', 'filter'],
     theory: `
@@ -81,6 +91,11 @@ const LEVELS = [
     n: 3,
     title: 'Contours (Envelopes)',
     subtitle: 'Shaping sound over time',
+    summary: [
+      'An envelope shapes sound over time: <b>Attack, Decay, Sustain</b> (a level), <b>Release</b>.',
+      'The loudness envelope drives the volume; the filter envelope opens and closes the cutoff.',
+      'Fast decay + no sustain = pluck; slow attack = swell; big filter envelope = “bwow”.',
+    ],
     flow: ['vco', 'vcf', 'vca', 'env', 'out'],
     viz: ['scope', 'env', 'filter'],
     theory: `
@@ -110,6 +125,11 @@ const LEVELS = [
     n: 4,
     title: 'Three Oscillators',
     subtitle: 'The Minimoog mixer',
+    summary: [
+      'The Minimoog mixes <b>three oscillators and noise</b>.',
+      'Detune two slightly for a thick, moving sound; stack octaves for weight.',
+      'Tune one a fifth up (+7) for power chords; noise alone gives wind and surf.',
+    ],
     flow: ['vco3', 'mix', 'vcf', 'vca', 'env', 'out'],
     viz: ['scope', 'spectrum', 'env'],
     theory: `
@@ -141,6 +161,11 @@ const LEVELS = [
     n: 5,
     title: 'Modulation & Performance',
     subtitle: 'LFO, wheels, glide',
+    summary: [
+      'An <b>LFO</b> slowly moves another control: on pitch it is vibrato, on the filter a wobble.',
+      'The <b>mod wheel</b> sets how much LFO you hear; the pitch wheel bends notes.',
+      '<b>Glide</b> slides between notes; key tracking keeps high notes bright.',
+    ],
     flow: ['vco3', 'mix', 'vcf', 'vca', 'env', 'lfo', 'out'],
     viz: ['scope', 'filter', 'env'],
     theory: `
@@ -170,6 +195,11 @@ const LEVELS = [
     n: 6,
     title: 'Model D Sandbox',
     subtitle: 'Everything + presets',
+    summary: [
+      'Everything is unlocked: study the presets and ask <i>why</i> each one sounds that way.',
+      'Recipe: <b>source</b> (waves) → <b>tone</b> (filter) → <b>shape</b> (envelopes) → <b>life</b> (modulation).',
+      'Add pedals and record loops to build a whole piece.',
+    ],
     flow: ['vco3', 'mix', 'vcf', 'vca', 'env', 'lfo', 'out'],
     viz: ['scope', 'spectrum', 'filter', 'env'],
     theory: `

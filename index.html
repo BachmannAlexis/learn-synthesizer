@@ -35,8 +35,12 @@
     <div class="col-lesson">
       <article class="lesson card">
         <p id="lesson-kicker" class="kicker"></p>
-        <h1 id="lesson-title"></h1>
-        <details id="lesson-more" class="lesson-more" open>
+        <div class="title-row">
+          <h1 id="lesson-title"></h1>
+          <button id="demo-btn" class="demo-btn" type="button" data-i18n-title="demoTitle"></button>
+        </div>
+        <ul id="lesson-summary" class="summary"></ul>
+        <details id="lesson-more" class="lesson-more">
           <summary data-i18n="readLesson">Read the lesson</summary>
           <div id="lesson-theory" class="theory"></div>
           <h2 data-i18n="tryThis">Try this</h2>
@@ -59,7 +63,10 @@
       <section id="studio-intro" class="studio-intro" hidden>
         <div>
           <p class="kicker" data-i18n="studioKicker">Studio · free play</p>
-          <h1 data-i18n="studioTitle">Your Model D</h1>
+          <div class="title-row">
+            <h1 data-i18n="studioTitle">Your Model D</h1>
+            <button id="studio-demo-btn" class="demo-btn" type="button" data-i18n-title="demoTitle"></button>
+          </div>
           <p class="studio-text" data-i18n="studioText"></p>
         </div>
         <ul id="studio-tips" class="tips"></ul>
@@ -148,6 +155,13 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="knob-bubble" class="knob-bubble" aria-hidden="true" hidden></div>
+  <div id="demo-bar" class="demo-bar" role="status" aria-live="polite" hidden>
+    <span class="demo-tag" data-i18n="demoLabel">Demo</span>
+    <span id="demo-step" class="demo-step"></span>
+    <p id="demo-caption" class="demo-caption"></p>
+    <button id="demo-stop" type="button" data-i18n="demoStop">■ Stop</button>
+    <i id="demo-progress" class="demo-progress"></i>
+  </div>
 
   <script src="js/i18n.js"></script>
   <script src="js/dsp.js"></script>
@@ -157,6 +171,7 @@
   <script src="js/viz.js"></script>
   <script src="js/fx.js"></script>
   <script src="js/looper.js"></script>
+  <script src="js/demos.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
