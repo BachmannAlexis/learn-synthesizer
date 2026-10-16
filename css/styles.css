@@ -235,6 +235,26 @@ kbd {
   padding: 8px 10px 10px;
   background: linear-gradient(#171513, #121110);
 }
+.fold-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
+  padding: 0; margin: 0; background: none; border: 0; border-radius: 4px;
+  color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer;
+}
+.fold-btn:hover:not(:disabled) { color: var(--accent); }
+.chev { width: 8px; height: 8px; flex: none; margin-left: 2px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translate(-2px, -2px); opacity: 0.6; transition: transform 0.15s; }
+.folded .chev { transform: rotate(-45deg); }
+.folded > .fold-body, .folded .fold-body { display: none; }
+.fold-summary { display: none; margin: 0; font: 11px/1.4 ui-monospace, Menlo, monospace; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.folded .fold-summary { display: block; }
+.module.folded { flex: 1 1 160px; min-width: 0; padding-bottom: 8px; }
+.module.folded h3 { border-bottom: 0; margin-bottom: 2px; padding-bottom: 0; }
+.board .fold-btn, .viz .fold-btn { justify-content: flex-start; text-align: left; }
+.board-title .fold-btn small { margin-left: 6px; }
+.viz figcaption .fold-btn small { margin-left: auto; }
+.viz.folded figcaption { margin-bottom: 0; }
+.board.folded .board-title { margin-bottom: 4px; }
+.board .fold-summary { text-align: left; }
+.fold-all { margin-right: 0; }
 .module h3 {
   margin: 0 0 8px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
   color: var(--text); text-align: center; border-bottom: 1px solid var(--line); padding-bottom: 6px;
@@ -379,7 +399,7 @@ kbd {
 .hold[aria-pressed="true"] { background: var(--accent); color: #1a0f05; border-color: var(--accent); }
 
 /* ---------- visualizers ---------- */
-.viz-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.viz-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; align-items: start; }
 .viz { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px 10px; }
 .viz[hidden] { display: none; }
 .viz figcaption { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: flex; justify-content: space-between; gap: 8px; }

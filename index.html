@@ -92,14 +92,16 @@
             </form>
           </div>
           <p class="panel-hint" data-i18n="panelHint">Drag knobs up or down · Shift for fine · double-click to reset</p>
+          <button id="fold-all" class="fold-all" type="button">Fold all</button>
           <button id="reset" type="button">Reset patch</button>
         </div>
         <div id="panel" class="panel"></div>
       </section>
 
-      <section class="board" aria-labelledby="board-title">
-        <h2 id="board-title" class="board-title"><span data-i18n="pedalboard">Pedalboard</span> <small data-i18n="pedalboardSub">effects after the synth · loop station</small></h2>
-        <div class="board-row">
+      <section class="board" data-fold="board" aria-labelledby="board-title">
+        <h2 id="board-title" class="board-title"><button type="button" class="fold-btn" data-i18n-title="foldTitle"><span data-i18n="pedalboard">Pedalboard</span> <small data-i18n="pedalboardSub">effects after the synth · loop station</small><i class="chev" aria-hidden="true"></i></button></h2>
+        <p id="board-summary" class="fold-summary"></p>
+        <div class="board-row fold-body">
           <div id="looper" class="looper" data-state="idle">
             <div class="looper-head">
               <span class="pedal-name" data-i18n="loopStation">Loop Station</span>
@@ -128,10 +130,10 @@
       </section>
 
       <div class="viz-grid">
-        <figure class="viz" data-viz="scope"><figcaption><span data-i18n="scope">Oscilloscope</span> <small data-i18n="scopeSub">shape over time</small></figcaption><canvas id="viz-scope"></canvas></figure>
-        <figure class="viz" data-viz="spectrum"><figcaption><span data-i18n="spectrum">Spectrum</span> <small data-i18n="spectrumSub">harmonics</small></figcaption><canvas id="viz-spectrum"></canvas></figure>
-        <figure class="viz" data-viz="filter"><figcaption><span data-i18n="ladder">Ladder response</span> <small id="fc-readout"></small></figcaption><canvas id="viz-filter"></canvas></figure>
-        <figure class="viz" data-viz="env"><figcaption><span data-i18n="contours">Contours</span> <small data-i18n="contoursSub">ADSR over time</small></figcaption><canvas id="viz-env"></canvas></figure>
+        <figure class="viz" data-viz="scope" data-fold="viz-scope"><figcaption><button type="button" class="fold-btn" data-i18n-title="foldTitle"><span data-i18n="scope">Oscilloscope</span> <small data-i18n="scopeSub">shape over time</small><i class="chev" aria-hidden="true"></i></button></figcaption><div class="fold-body"><canvas id="viz-scope"></canvas></div></figure>
+        <figure class="viz" data-viz="spectrum" data-fold="viz-spectrum"><figcaption><button type="button" class="fold-btn" data-i18n-title="foldTitle"><span data-i18n="spectrum">Spectrum</span> <small data-i18n="spectrumSub">harmonics</small><i class="chev" aria-hidden="true"></i></button></figcaption><div class="fold-body"><canvas id="viz-spectrum"></canvas></div></figure>
+        <figure class="viz" data-viz="filter" data-fold="viz-filter"><figcaption><button type="button" class="fold-btn" data-i18n-title="foldTitle"><span data-i18n="ladder">Ladder response</span> <small id="fc-readout"></small><i class="chev" aria-hidden="true"></i></button></figcaption><div class="fold-body"><canvas id="viz-filter"></canvas></div></figure>
+        <figure class="viz" data-viz="env" data-fold="viz-env"><figcaption><button type="button" class="fold-btn" data-i18n-title="foldTitle"><span data-i18n="contours">Contours</span> <small data-i18n="contoursSub">ADSR over time</small><i class="chev" aria-hidden="true"></i></button></figcaption><div class="fold-body"><canvas id="viz-env"></canvas></div></figure>
       </div>
     </div>
   </main>

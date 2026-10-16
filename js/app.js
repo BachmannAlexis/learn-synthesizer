@@ -361,23 +361,70 @@
     if (def.fx) {
       if (board) board.update(patch);
       store.set('fx', fxOf(patch));
+      updateSummaries();
       return;
     }
     if (isStudio()) store.set('studio', synthOf(patch));
+    updateSummaries();
     if (!silent) { sendParams(); checkChallenges(); }
+  }
+
+  // ---------- foldable sections ----------
+  // Any element with data-fold="key" holds a .fold-btn (its title) and a .fold-body.
+  // Folded sections show a one-line .fold-summary instead; the choice is remembered.
+  const folded = store.get('folded', {});
+  function setFold(el, on, { save = true } = {}) {
+    el.classList.toggle('folded', on);
+    const btn = $('.fold-btn', el);
+    if (btn) btn.setAttribute('aria-expanded', !on);
+    if (save) {
+      if (on) folded[el.dataset.fold] = true; else delete folded[el.dataset.fold];
+      store.set('folded', folded);
+    }
+    updateFoldAll();
+  }
+  function initFold(el) {
+    $('.fold-btn', el).addEventListener('click', () => setFold(el, !el.classList.contains('folded')));
+    setFold(el, !!folded[el.dataset.fold], { save: false });
+  }
+  const foldables = () => $$('[data-fold]').filter((el) => !el.hidden && !el.closest('[hidden]'));
+  function updateFoldAll() {
+    const any = foldables().some((el) => !el.classList.contains('folded'));
+    $('#fold-all').textContent = I18N.t(any ? 'foldAll' : 'unfoldAll');
+  }
+  function foldAll() {
+    const any = foldables().some((el) => !el.classList.contains('folded'));
+    foldables().forEach((el) => setFold(el, any));
+  }
+  const sectionSummaries = [];
+  function updateSummaries() {
+    sectionSummaries.forEach((f) => f());
+    const on = PEDALS.filter((pd) => patch[PARAMS.find((d) => d.pedal === pd.id && d.type === 'toggle').id]).map((pd) => I18N.pedal(pd).name);
+    $('#board-summary').textContent = (on.length ? on.join(', ') : I18N.t('noPedals')) + ' · ' + I18N.t('loopStation') + ': ' + $('#loop-state').textContent;
+  }
+  function refreshControls() {
+    Object.values(controls).forEach((f) => f());
+    updateSummaries();
   }
 
   function buildPanel() {
     const panel = $('#panel');
     panel.innerHTML = '';
+    sectionSummaries.length = 0;
     const lv = vis(), showNew = !isStudio() && level > 1;
     for (const sec of SECTIONS) {
       const defs = PARAMS.filter((p) => p.section === sec.id && p.level <= lv);
       if (!defs.length) continue;
       const box = document.createElement('section');
       box.className = 'module module-' + sec.id;
+      box.dataset.fold = sec.id;
       const isNew = showNew && defs.some((d) => d.level === level);
-      box.innerHTML = `<h3>${I18N.section(sec)}${isNew ? `<span class="new">${I18N.t('newBadge')}</span>` : ''}</h3><div class="module-body"></div>`;
+      box.innerHTML = `<h3><button type="button" class="fold-btn" title="${I18N.t('foldTitle')}"><span>${I18N.section(sec)}</span>${isNew ? `<span class="new">${I18N.t('newBadge')}</span>` : ''}<i class="chev" aria-hidden="true"></i></button></h3>
+        <p class="fold-summary"></p><div class="module-body fold-body"></div>`;
+      const sum = $('.fold-summary', box);
+      sectionSummaries.push(() => {
+        sum.textContent = defs.map((d) => (d.type ? '' : I18N.param(d) + ' ') + (d.type ? I18N.option(formatValue(d, patch[d.id])) : formatValue(d, patch[d.id]))).join(' · ');
+      });
       const body = $('.module-body', box);
       for (const d of defs) {
         const c = d.type === 'choice' ? makeChoice(d) : makeKnob(d);
@@ -385,8 +432,9 @@
         body.appendChild(c);
       }
       panel.appendChild(box);
+      initFold(box);
     }
-    Object.values(controls).forEach((f) => f());
+    refreshControls();
     $('#perf').hidden = lv < 5;
     buildPresets();
     buildPedalboard();
@@ -530,7 +578,7 @@
   function resetPatch() {
     patch = withFx(isStudio() ? defaultPatch() : patchForLevel(level));
     if (isStudio()) store.set('studio', synthOf(patch));
-    Object.values(controls).forEach((f) => f());
+    refreshControls();
     $('#mod-wheel').value = patch.modWheel;
     sendParams();
     toast(I18N.t(isStudio() ? 'patchInit' : 'patchReset'));
@@ -538,7 +586,7 @@
 
   // ---------- demos ----------
   // Each level has a short auto-play demo: the app plays notes and moves the knobs itself.
-  const demo = { running: false, level: 0, timers: [], rafs: new Set(), saved: null, notes: new Set(), t0: 0, total: 0 };
+  const demo = { unfolded: new Set(), running: false, level: 0, timers: [], rafs: new Set(), saved: null, notes: new Set(), t0: 0, total: 0 };
 
   function renderDemoButtons() {
     for (const [id, n] of [['#demo-btn', level], ['#studio-demo-btn', LEVELS.length]]) {
@@ -552,7 +600,7 @@
   function applyPatch(p) {
     patch = withFx(p);
     if (isStudio()) store.set('studio', synthOf(patch));
-    Object.values(controls).forEach((f) => f());
+    refreshControls();
     $('#mod-wheel').value = patch.modWheel;
     sendParams();
   }
@@ -567,7 +615,10 @@
     $$('.demo-focus').forEach((e) => e.classList.remove('demo-focus'));
     for (const id of ids) {
       const el = id === 'preset' ? $('#preset-select') : $(`[data-param="${id}"]`);
-      if (el) el.classList.add('demo-focus');
+      if (!el) continue;
+      el.classList.add('demo-focus');
+      const box = el.closest('[data-fold].folded');
+      if (box) { setFold(box, false, { save: false }); demo.unfolded.add(box.dataset.fold); }
     }
   }
 
@@ -631,6 +682,8 @@
     [...demo.notes].forEach((n) => demoNote(n, false));
     send({ type: 'allOff' });
     highlight([]);
+    for (const key of demo.unfolded) { const el = $(`[data-fold="${key}"]`); if (el && folded[key]) setFold(el, true, { save: false }); }
+    demo.unfolded.clear();
     applyPatch(demo.saved);
     $('#demo-bar').hidden = true;
     $('#demo-progress').style.width = '0';
@@ -660,7 +713,7 @@
     const needs = presetLevel(src);
     if (!isStudio() && needs > level) toast(I18N.t('presetNeeds', { n: needs }));
     if (isStudio()) store.set('studio', synthOf(patch));
-    Object.values(controls).forEach((f) => f());
+    refreshControls();
     $('#mod-wheel').value = patch.modWheel;
     if (v.startsWith('f:')) stats.presets.add(v);
     sendParams();
@@ -701,7 +754,7 @@
       controls[on.id] = () => { el.classList.toggle('on', !!patch[on.id]); sw.setAttribute('aria-pressed', !!patch[on.id]); };
       box.appendChild(el);
     }
-    Object.values(controls).forEach((f) => f());
+    refreshControls();
   }
 
   // ---------- looper ----------
@@ -731,6 +784,7 @@
     $('#loop-bars').disabled = !!(s.notes || s.running);
     $('#loop-click').checked = st.metronome;
     $('#loop-quant').checked = st.quantize;
+    updateSummaries();
     const beats = $('#loop-beats');
     if (beats.childElementCount !== s.loopBeats) beats.innerHTML = '<i></i>'.repeat(s.loopBeats);
   }
@@ -937,6 +991,9 @@
     $('#demo-btn').addEventListener('click', () => startDemo(level));
     $('#studio-demo-btn').addEventListener('click', () => startDemo(LEVELS.length));
     $('#demo-stop').addEventListener('click', stopDemo);
+    $('#fold-all').addEventListener('click', foldAll);
+    $$('.board[data-fold], .viz[data-fold]').forEach(initFold); // panel modules fold in buildPanel
+    updateSummaries();
     $('#mode-learn').addEventListener('click', (e) => { e.preventDefault(); setMode('learn'); });
     $('#mode-studio').addEventListener('click', (e) => { e.preventDefault(); setMode('studio'); });
     window.addEventListener('hashchange', () => setMode(location.hash === '#studio' ? 'studio' : 'learn'));

@@ -10,6 +10,7 @@ challenges to try and live visualizations.
 Two sections, switched from the top bar:
 
 - **Learn / Apprendre** — six levels, each with three key points (full lesson one click away), challenges (stars), the controls it introduces and a **Demo** button: 15–20 s where the app plays and turns the knobs itself, with captions.
+- Every panel section (each oscillator, mixer, filter, envelopes, modulation, output), the pedalboard and each scope can be **folded** to a one-line summary of its settings; "Fold all" folds everything, and the choice is remembered.
 - **Studio** — the whole synth unlocked for free play: presets, pedals, loop station and all scopes. Your Studio sound is saved separately from the lessons.
 
 The interface and all lessons are in **English and French** (EN/FR switch; it starts in your browser's language).
