@@ -251,4 +251,17 @@ function formatValue(def, v) {
   }
 }
 
-if (typeof module !== 'undefined') module.exports = { PARAMS, PRESETS, PEDALS, LEVEL_PATCHES, defaultPatch, patchForLevel, presetLevel, toNorm, fromNorm, formatValue };
+// Turn typed text ("350", "1.2k", "40%", "250 ms", "×2.5", "-5") into a value for `def`.
+// Without a unit the number is read in the unit currently shown (e.g. ms below 1 s).
+function parseValue(def, text, current) {
+  const m = String(text).trim().replace(',', '.').match(/^[×x*]?\s*([+-]?\d*\.?\d+)\s*(khz|k|hz|ms|s|%|st|dt|oct)?$/i);
+  if (!m) return null;
+  let v = parseFloat(m[1]);
+  const u = (m[2] || '').toLowerCase();
+  if (def.fmt === 'hz' && (u === 'k' || u === 'khz')) v *= 1000;
+  else if (def.fmt === 's' && (u === 'ms' || (!u && current < 1))) v /= 1000;
+  else if (def.fmt === 'pct') v /= 100;
+  return Math.min(def.max, Math.max(def.min, v));
+}
+
+if (typeof module !== 'undefined') module.exports = { parseValue, PARAMS, PRESETS, PEDALS, LEVEL_PATCHES, defaultPatch, patchForLevel, presetLevel, toNorm, fromNorm, formatValue };

@@ -214,7 +214,7 @@ kbd {
 .module-body { display: flex; flex-wrap: wrap; gap: 8px 6px; justify-content: center; align-items: flex-start; }
 
 /* knob */
-.knob { width: 72px; text-align: center; cursor: ns-resize; touch-action: none; user-select: none; border-radius: 8px; padding: 2px 0; }
+.knob { width: 72px; text-align: center; cursor: grab; touch-action: none; user-select: none; border-radius: 8px; padding: 2px 0; }
 .knob svg { width: 56px; height: 56px; display: block; margin: 0 auto; }
 .knob-track, .knob-fill { fill: none; stroke-width: 4; stroke-linecap: round; }
 .knob-track { stroke: #2d2823; }
@@ -223,7 +223,33 @@ kbd {
 .knob-pointer { stroke: #f4ecdd; stroke-width: 3; stroke-linecap: round; }
 .knob.active .knob-cap, .knob:hover .knob-cap { stroke: var(--accent-dim); }
 .knob-label { font-size: 11px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; }
-.knob-value { font: 11px ui-monospace, Menlo, monospace; color: var(--trace); min-height: 1.4em; }
+.knob-value {
+  display: block; margin: 1px auto 0; padding: 2px 4px; min-height: 22px; min-width: 44px;
+  font: 11px ui-monospace, Menlo, monospace; color: var(--trace);
+  background: transparent; border: 1px solid transparent; border-radius: 4px; cursor: text;
+}
+.knob-value:hover { border-color: var(--line); }
+.knob-edit {
+  display: block; width: 64px; margin: 1px auto 0; padding: 2px 4px; text-align: center;
+  font: 12px ui-monospace, Menlo, monospace; color: var(--text);
+  background: #0b0a09; border: 1px solid var(--accent); border-radius: 4px;
+}
+.knob-bubble {
+  position: fixed; z-index: 20; transform: translateX(-50%); pointer-events: none;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 6px 12px; border-radius: 8px; background: var(--good); color: #1d1503;
+  font: 700 16px/1.15 ui-monospace, Menlo, monospace; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+.knob-bubble small { font: 600 10px/1.2 system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.6px; }
+.knob.active { background: rgba(255, 138, 61, 0.08); }
+/* Touch screens: bigger knobs. */
+@media (pointer: coarse) {
+  .knob { width: 76px; }
+  .knob svg { width: 62px; height: 62px; }
+  .pedal .knob { width: 54px; }
+  .pedal .knob svg { width: 48px; height: 48px; }
+}
 .is-new .knob-cap, .is-new .choice-btns { box-shadow: 0 0 0 0 transparent; }
 .is-new .knob-label, .is-new .choice-label { color: var(--accent); }
 

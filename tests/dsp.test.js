@@ -82,3 +82,20 @@ test('lesson challenges reference valid levels and are not pre-solved by the lev
     }
   }
 });
+
+test('typed knob values are parsed in the units people use', () => {
+  const { parseValue } = require('../js/params.js');
+  const P = Object.fromEntries(PARAMS.map((d) => [d.id, d]));
+  assert.strictEqual(parseValue(P.cutoff, '350'), 350);
+  assert.strictEqual(parseValue(P.cutoff, '1.2k'), 1200);
+  assert.strictEqual(parseValue(P.cutoff, '1,5 kHz'), 1500);
+  assert.strictEqual(parseValue(P.cutoff, '99999'), 20000, 'clamped to range');
+  assert.strictEqual(parseValue(P.resonance, '40%'), 0.4);
+  assert.strictEqual(parseValue(P.resonance, '40'), 0.4);
+  assert.strictEqual(parseValue(P.aA, '250 ms', 0.3), 0.25);
+  assert.strictEqual(parseValue(P.aA, '250', 0.3), 0.25, 'no unit: same unit as shown (ms)');
+  assert.strictEqual(parseValue(P.aA, '2', 1.5), 2, 'no unit: same unit as shown (s)');
+  assert.strictEqual(parseValue(P.drive, '×2.5'), 2.5);
+  assert.strictEqual(parseValue(P.osc2Detune, '-5'), -5);
+  assert.strictEqual(parseValue(P.cutoff, 'abc'), null);
+});

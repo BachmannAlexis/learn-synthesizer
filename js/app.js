@@ -210,7 +210,7 @@
         <line class="knob-pointer" x1="32" y1="32" x2="32" y2="16"/>
       </svg>
       <div class="knob-label">${I18N.param(def)}</div>
-      <div class="knob-value"></div>`;
+      <button type="button" class="knob-value" title="${I18N.t('typeValue')}"></button>`;
     el.tabIndex = 0;
     el.setAttribute('role', 'slider');
     el.setAttribute('aria-label', I18N.param(def));
@@ -225,28 +225,87 @@
       el.setAttribute('aria-valuetext', val.textContent);
     };
     const setNorm = (n) => setParam(def.id, fromNorm(def, n));
-    let startY = 0, startN = 0;
+    const normDef = toNorm(def, def.def);
+    let startX = 0, startY = 0, startN = 0, lastPointer = 'mouse';
     el.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.knob-value, .knob-edit')) return; // the value opens the number editor instead
+      lastPointer = e.pointerType;
       el.setPointerCapture(e.pointerId);
-      startY = e.clientY; startN = toNorm(def, patch[def.id]);
+      startX = e.clientX; startY = e.clientY; startN = toNorm(def, patch[def.id]);
       el.classList.add('active');
+      showBubble(el, def);
       e.preventDefault();
     });
     el.addEventListener('pointermove', (e) => {
       if (!el.hasPointerCapture(e.pointerId)) return;
-      const sens = e.shiftKey ? 0.001 : 0.004; // ~250 px for a full sweep
-      setNorm(startN + (startY - e.clientY) * sens);
+      // Up or right turns it up, down or left turns it down; ~250 px for a full sweep, Shift = 4x finer.
+      const moved = (e.clientX - startX) - (e.clientY - startY);
+      let n = startN + moved * (e.shiftKey ? 0.001 : 0.004);
+      // Light notch at the default value, so it is easy to find again.
+      if (Math.abs(n - normDef) < 0.015 && Math.abs(startN - normDef) > 0.001) n = normDef;
+      setNorm(n);
+      showBubble(el, def);
     });
-    el.addEventListener('pointerup', () => el.classList.remove('active'));
-    el.addEventListener('dblclick', () => setParam(def.id, def.def));
+    const end = () => { el.classList.remove('active'); hideBubble(); };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    // Double-click resets with a mouse; on touch screens a double tap is too easy to do by accident.
+    el.addEventListener('dblclick', (e) => {
+      if (lastPointer === 'mouse' && !e.target.closest('.knob-value, .knob-edit')) setParam(def.id, def.def);
+    });
+    val.addEventListener('click', () => editValue(el, def, val));
     el.addEventListener('wheel', (e) => { e.preventDefault(); setNorm(toNorm(def, patch[def.id]) - Math.sign(e.deltaY) * (e.shiftKey ? 0.005 : 0.03)); }, { passive: false });
     el.addEventListener('keydown', (e) => {
       const step = e.shiftKey ? 0.005 : 0.03;
       if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { setNorm(toNorm(def, patch[def.id]) + step); e.preventDefault(); e.stopPropagation(); }
       if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { setNorm(toNorm(def, patch[def.id]) - step); e.preventDefault(); e.stopPropagation(); }
+      if (e.key === 'Enter' && e.target === el) { editValue(el, def, val); e.preventDefault(); }
     });
     controls[def.id] = update;
     return el;
+  }
+
+  // Large readout above the knob while it is turned (a finger hides the small value).
+  function showBubble(el, def) {
+    const b = $('#knob-bubble');
+    b.innerHTML = `<small>${I18N.param(def)}</small>${formatValue(def, patch[def.id])}`;
+    const r = el.getBoundingClientRect();
+    b.style.left = Math.min(window.innerWidth - 70, Math.max(70, r.left + r.width / 2)) + 'px';
+    b.style.top = Math.max(8, r.top - 54) + 'px';
+    b.hidden = false;
+  }
+  function hideBubble() { $('#knob-bubble').hidden = true; }
+
+  // Type an exact value: click/tap the number under a knob.
+  function editValue(el, def, val) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.inputMode = 'decimal';
+    input.className = 'knob-edit';
+    input.value = formatValue(def, patch[def.id]).replace(/\s*(dt|st)$/, '');
+    input.setAttribute('aria-label', I18N.param(def));
+    val.hidden = true;
+    val.after(input);
+    input.focus();
+    input.select();
+    let closed = false;
+    const close = (apply) => {
+      if (closed) return;
+      closed = true;
+      if (apply) {
+        const v = parseValue(def, input.value, patch[def.id]);
+        if (v === null) toast(I18N.t('badValue', { text: input.value }));
+        else setParam(def.id, v);
+      }
+      input.remove();
+      val.hidden = false;
+    };
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') close(true);
+      if (e.key === 'Escape') { close(false); el.focus(); }
+    });
+    input.addEventListener('blur', () => close(true));
   }
 
   function makeChoice(def) {
