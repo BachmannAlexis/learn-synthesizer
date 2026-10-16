@@ -238,12 +238,13 @@ function fromNorm(def, n) {
 
 function formatValue(def, v) {
   if (def.type === 'choice') return def.options[v];
-  if (def.type === 'toggle') return v ? 'On' : 'Off';
+  const tr = (k, en) => (typeof I18N !== 'undefined' ? I18N.t(k) : en);
+  if (def.type === 'toggle') return v ? tr('on', 'On') : tr('off', 'Off');
   switch (def.fmt) {
     case 'hz': return v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 1 : 2) + ' kHz' : v.toFixed(v < 10 ? 2 : 0) + ' Hz';
     case 's': return v < 1 ? Math.round(v * 1000) + ' ms' : v.toFixed(2) + ' s';
     case 'pct': return Math.round(v * 100) + '%';
-    case 'st': return (v > 0 ? '+' : '') + v.toFixed(2) + ' st';
+    case 'st': return (v > 0 ? '+' : '') + v.toFixed(2) + ' ' + tr('st', 'st');
     case 'oct': return v.toFixed(2) + ' oct';
     case 'x': return '×' + v.toFixed(2);
     default: return v.toFixed(2);

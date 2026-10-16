@@ -2,6 +2,7 @@
 const Viz = (() => {
   // Theme colours are fixed, so read each CSS variable once instead of every frame.
   const cssCache = {};
+  const tr = (k, vars) => I18N.t(k, vars);
   const css = (name) => cssCache[name] || (cssCache[name] = getComputedStyle(document.documentElement).getPropertyValue(name).trim());
 
   function setup(canvas) {
@@ -37,7 +38,7 @@ const Viz = (() => {
     g.fillStyle = css('--muted');
     g.font = '13px system-ui, sans-serif';
     g.textAlign = 'center';
-    g.fillText('Play a key to see the sound', w / 2, h / 2 + 4);
+    g.fillText(tr('vizIdle'), w / 2, h / 2 + 4);
   }
 
   const timeBuf = new Float32Array(4096);
@@ -168,14 +169,14 @@ const Viz = (() => {
     const mid = h * 0.5;
     shape(p.aA, p.aD, p.aS, p.aR, css('--trace'), h * 0.1, mid - 6);
     shape(p.fA, p.fD, p.fS, p.fR, css('--accent'), mid + 14, h - 8);
-    label(g, 'LOUDNESS', 4, 11);
-    label(g, 'FILTER (' + p.filterEnvAmt.toFixed(1) + ' oct)', 4, mid + 12);
+    label(g, tr('vizLoud'), 4, 11);
+    label(g, tr('vizFilter', { v: p.filterEnvAmt.toFixed(1) }), 4, mid + 12);
     const xr = (hold / total) * w;
     g.strokeStyle = css('--grid-strong');
     g.setLineDash([2, 4]);
     g.beginPath(); g.moveTo(xr, 0); g.lineTo(xr, h); g.stroke();
     g.setLineDash([]);
-    label(g, 'key up', xr + 3, h - 2);
+    label(g, tr('vizKeyUp'), xr + 3, h - 2);
     if (tele && tele.stageA) {
       // live level meters on the right edge
       g.fillStyle = css('--trace');

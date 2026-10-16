@@ -1,8 +1,19 @@
 # MoogLab — learn-synthesizer
 
+**▶ Play it: https://bachmannalexis.github.io/learn-synthesizer/** · English / Français
+
+
 An interactive app to learn synthesis on a simulated **Minimoog Model D**-style monosynth.
 It goes through **6 levels**, each one adding a section of the synth and giving you a lesson,
 challenges to try and live visualizations.
+
+Two sections, switched from the top bar:
+
+- **Learn / Apprendre** — six levels, each with a lesson, challenges (stars) and the controls it introduces.
+- **Studio** — the whole synth unlocked for free play: presets, pedals, loop station and all scopes. Your Studio sound is saved separately from the lessons.
+
+The interface and all lessons are in **English and French** (EN/FR switch; it starts in your browser's language).
+The computer keyboard uses physical key positions, so it plays the same on QWERTY, AZERTY or QWERTZ keyboards, and the letters on the piano keys match your layout.
 
 | Level | Topic | Unlocks |
 |---|---|---|
@@ -53,12 +64,15 @@ index.html        layout
 css/styles.css    styles
 js/dsp.js         synth engine (runs in the AudioWorklet)
 js/params.js      parameters, level start patches, presets
-js/lessons.js     curriculum: lessons + challenges
+js/lessons.js     curriculum: lessons + challenges (English)
+js/lessons-fr.js  lessons in French
+js/i18n.js        interface translations and language switch
 js/viz.js         oscilloscope, spectrum, filter response, envelopes
 js/fx.js          effect pedals (Web Audio graph)
 js/looper.js      loop station (recording, overdub, scheduling)
 js/app.js         UI, keyboard, MIDI, progress
-tests/            DSP, curriculum and looper tests (npm test)
+tests/            DSP, curriculum, looper and translation tests (npm test)
+.github/workflows/pages.yml   tests, then publishes to GitHub Pages on every push to main
 ```
 
 Progress and your saved patches are stored in the browser's `localStorage`.

@@ -28,7 +28,7 @@ const LEVELS = [
       </ul>
       <p>Moog labels octaves in <b>feet</b> like a pipe organ: 32' is lowest, 2' highest; 8' is "concert pitch".</p>`,
     tips: [
-      'Play with your computer keyboard: <kbd>A</kbd>–<kbd>;</kbd> are white keys, <kbd>W E T Y U O P</kbd> black keys, <kbd>Z</kbd>/<kbd>X</kbd> shift octave.',
+      'Play with your computer keyboard: the middle letter row plays the white keys and the row above the black keys — the letters are shown on the piano. The two keys left of the bottom row shift the octave.',
       'Switch waveforms while holding a note. Compare the scope (shape) with the spectrum (harmonics).',
       'Below the synth: effect pedals and a <b>Loop Station</b>. Press <kbd>R</kbd> to record a loop, then play over it.',
     ],

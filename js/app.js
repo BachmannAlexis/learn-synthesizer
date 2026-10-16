@@ -13,7 +13,14 @@
   // Pedal settings live in the same patch object but persist across levels and presets.
   const fxOf = (p) => Object.fromEntries(PARAMS.filter((d) => d.fx).map((d) => [d.id, p[d.id]]));
   const synthOf = (p) => Object.fromEntries(Object.entries(p).filter(([k]) => !isFx(k)));
-  let patch = { ...patchForLevel(level), ...store.get('fx', {}) };
+  // Two sections: 'learn' (levels, lessons, challenges) and 'studio' (every control, free play).
+  let mode = location.hash === '#studio' ? 'studio' : location.hash === '#learn' ? 'learn' : store.get('mode', 'learn');
+  const isStudio = () => mode === 'studio';
+  const vis = () => (isStudio() ? LEVELS.length : level); // highest level whose controls are shown
+  const STUDIO_VIEW = { flow: ['vco3', 'mix', 'vcf', 'vca', 'env', 'lfo', 'out'], viz: ['scope', 'spectrum', 'filter', 'env'] };
+  const view = () => (isStudio() ? STUDIO_VIEW : LEVELS[level - 1]);
+  const studioPatch = () => ({ ...defaultPatch(), ...PRESETS['Fat Bass'], ...store.get('studio', {}) });
+  let patch = { ...(isStudio() ? studioPatch() : patchForLevel(level)), ...store.get('fx', {}) };
   const withFx = (p) => ({ ...p, ...fxOf(patch) });
   const done = new Set(store.get('done', []));
   const stats = { legato: 0, bent: false, presets: new Set(), saved: false };
@@ -40,7 +47,7 @@
   function updatePower() {
     const on = ctx && ctx.state === 'running';
     const btn = $('#power');
-    btn.textContent = !ctx ? 'Start audio' : on ? 'Sound on' : 'Tap for sound';
+    btn.textContent = I18N.t(!ctx ? 'startAudio' : on ? 'soundOn' : 'tapForSound');
     document.body.classList.toggle('powered', !!on);
   }
   // If the clock does not move after starting, rebuild the context with the default buffer.
@@ -91,8 +98,8 @@
       showLatency(out instanceof AudioWorkletNode ? 0 : FALLBACK_BUFFER / ctx.sampleRate);
     })().catch((err) => {
       starting = null;
-      $('#power').textContent = 'Audio failed — retry';
-      toast('Could not start audio (' + err.message + '). Try a recent Chrome, Edge, Firefox or Safari.');
+      $('#power').textContent = I18N.t('audioFailed');
+      toast(I18N.t('audioError', { msg: err.message }));
     });
     return starting;
   }
@@ -125,15 +132,17 @@
     return sp;
   }
   // Delay from key press to sound: browser + device buffers (+ fallback buffer).
+  let latencyMs = 0;
   function showLatency(extra) {
-    const ms = Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0) + extra) * 1000);
+    latencyMs = Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0) + extra) * 1000);
+    renderLatency();
+    if (latencyMs > 60) toast(I18N.t('delayToast', { ms: latencyMs }));
+  }
+  function renderLatency() {
     const el = $('#latency');
-    el.textContent = ms ? `${ms} ms delay` : '';
-    el.classList.toggle('high', ms > 60);
-    el.title = ms > 60
-      ? 'High audio delay: Bluetooth headphones/speakers add 100–250 ms. Wired headphones or built-in speakers play much faster.'
-      : 'Time from key press to sound';
-    if (ms > 60) toast('Audio delay is ' + ms + ' ms — Bluetooth audio adds a lot; wired headphones or built-in speakers are faster.');
+    el.textContent = latencyMs ? I18N.t('delay', { ms: latencyMs }) : '';
+    el.classList.toggle('high', latencyMs > 60);
+    el.title = I18N.t(latencyMs > 60 ? 'delayHigh' : 'delayTitle');
   }
   const send = (m) => node && node.port.postMessage(m);
   const sendParams = () => send({ type: 'params', p: synthOf(patch) });
@@ -200,12 +209,12 @@
         <circle class="knob-cap" cx="32" cy="32" r="19"/>
         <line class="knob-pointer" x1="32" y1="32" x2="32" y2="16"/>
       </svg>
-      <div class="knob-label">${def.label}</div>
+      <div class="knob-label">${I18N.param(def)}</div>
       <div class="knob-value"></div>`;
     el.tabIndex = 0;
     el.setAttribute('role', 'slider');
-    el.setAttribute('aria-label', def.label);
-    el.title = 'Drag up/down · Shift = fine · Double-click = reset';
+    el.setAttribute('aria-label', I18N.param(def));
+    el.title = I18N.t('knobTitle');
     const fill = $('.knob-fill', el), ptr = $('.knob-pointer', el), val = $('.knob-value', el);
     const update = () => {
       const n = toNorm(def, patch[def.id]);
@@ -243,12 +252,14 @@
   function makeChoice(def) {
     const el = document.createElement('div');
     el.className = 'choice';
-    el.innerHTML = `<div class="choice-label">${def.label}</div><div class="choice-btns" role="radiogroup" aria-label="${def.label}"></div>`;
+    const label = I18N.param(def);
+    el.innerHTML = `<div class="choice-label">${label}</div><div class="choice-btns" role="radiogroup" aria-label="${label}"></div>`;
     const btns = def.options.map((o, i) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.innerHTML = def.options === WAVES ? waveIcon(i) + `<span>${o}</span>` : `<span>${o}</span>`;
-      b.title = o;
+      const name = I18N.option(o);
+      b.innerHTML = def.options === WAVES ? waveIcon(i) + `<span>${name}</span>` : `<span>${name}</span>`;
+      b.title = name;
       b.addEventListener('click', () => setParam(def.id, i));
       $('.choice-btns', el).appendChild(b);
       return b;
@@ -290,29 +301,31 @@
       store.set('fx', fxOf(patch));
       return;
     }
+    if (isStudio()) store.set('studio', synthOf(patch));
     if (!silent) { sendParams(); checkChallenges(); }
   }
 
   function buildPanel() {
     const panel = $('#panel');
     panel.innerHTML = '';
+    const lv = vis(), showNew = !isStudio() && level > 1;
     for (const sec of SECTIONS) {
-      const defs = PARAMS.filter((p) => p.section === sec.id && p.level <= level);
+      const defs = PARAMS.filter((p) => p.section === sec.id && p.level <= lv);
       if (!defs.length) continue;
       const box = document.createElement('section');
       box.className = 'module module-' + sec.id;
-      const isNew = defs.some((d) => d.level === level) && level > 1;
-      box.innerHTML = `<h3>${sec.title}${isNew ? '<span class="new">new</span>' : ''}</h3><div class="module-body"></div>`;
+      const isNew = showNew && defs.some((d) => d.level === level);
+      box.innerHTML = `<h3>${I18N.section(sec)}${isNew ? `<span class="new">${I18N.t('newBadge')}</span>` : ''}</h3><div class="module-body"></div>`;
       const body = $('.module-body', box);
       for (const d of defs) {
         const c = d.type === 'choice' ? makeChoice(d) : makeKnob(d);
-        if (d.level === level && level > 1) c.classList.add('is-new');
+        if (showNew && d.level === level) c.classList.add('is-new');
         body.appendChild(c);
       }
       panel.appendChild(box);
     }
     Object.values(controls).forEach((f) => f());
-    $('#perf').hidden = level < 5;
+    $('#perf').hidden = lv < 5;
     buildPresets();
     buildPedalboard();
   }
@@ -326,7 +339,7 @@
       b.type = 'button';
       b.className = 'level-tab';
       const n = L.challenges.filter((c) => done.has(c.id)).length;
-      b.innerHTML = `<span class="lv-num">${L.n}</span><span class="lv-text"><b>${L.title}</b><small>${n}/${L.challenges.length} ★</small></span>`;
+      b.innerHTML = `<span class="lv-num">${L.n}</span><span class="lv-text"><b>${I18N.lesson(L).title}</b><small>${n}/${L.challenges.length} ★</small></span>`;
       b.setAttribute('aria-current', L.n === level);
       b.addEventListener('click', () => goLevel(L.n));
       nav.appendChild(b);
@@ -334,27 +347,42 @@
   }
 
   function buildLesson() {
-    const L = LEVELS[level - 1];
-    $('#lesson-kicker').textContent = `Level ${L.n} · ${L.subtitle}`;
-    $('#lesson-title').textContent = L.title;
-    $('#lesson-theory').innerHTML = L.theory;
-    $('#lesson-tips').innerHTML = L.tips.map((t) => `<li>${t}</li>`).join('');
-    // On phones the lesson text starts folded so the synth is reachable without a long scroll.
-    $('#lesson-more').open = !window.matchMedia('(max-width: 860px)').matches;
+    const L = LEVELS[level - 1], T = I18N.lesson(L);
+    $('#lesson-kicker').textContent = I18N.t('levelKicker', { n: L.n, sub: T.subtitle });
+    $('#lesson-title').textContent = T.title;
+    $('#lesson-theory').innerHTML = T.theory;
+    $('#lesson-tips').innerHTML = T.tips.map((x) => `<li>${x}</li>`).join('');
     renderChallenges();
-    // signal flow
-    $$('#flow [data-block]').forEach((b) => b.classList.toggle('on', L.flow.includes(b.dataset.block) || (b.dataset.block === 'vco' && L.flow.includes('vco3'))));
-    $('#flow [data-block="vco"] b').textContent = L.flow.includes('vco3') ? 'VCO ×3' : 'VCO';
-    // visualizers
-    $$('.viz').forEach((v) => (v.hidden = !L.viz.includes(v.dataset.viz)));
     $('#prev-level').disabled = level === 1;
     $('#next-level').disabled = level === LEVELS.length;
+  }
+
+  // Which blocks, scopes and section chrome are visible for the current section/level.
+  function buildView() {
+    const V = view(), studio = isStudio();
+    document.body.classList.toggle('mode-studio', studio);
+    $('#levels').hidden = studio;
+    $('.col-lesson').hidden = studio;
+    $('#studio-intro').hidden = !studio;
+    $('.progress').hidden = studio;
+    $('#mode-learn').setAttribute('aria-current', studio ? 'false' : 'page');
+    $('#mode-studio').setAttribute('aria-current', studio ? 'page' : 'false');
+    $('#reset').textContent = I18N.t(studio ? 'initPatch' : 'resetPatch');
+    $('#studio-tips').innerHTML = (STRINGS[I18N.lang].studioTips || STRINGS.en.studioTips).map((x) => `<li>${x}</li>`).join('');
+    $$('#flow [data-block]').forEach((b) => b.classList.toggle('on', V.flow.includes(b.dataset.block) || (b.dataset.block === 'vco' && V.flow.includes('vco3'))));
+    $('#flow [data-block="vco"] b').textContent = V.flow.includes('vco3') ? 'VCO ×3' : 'VCO';
+    $$('.viz').forEach((v) => (v.hidden = !V.viz.includes(v.dataset.viz)));
+    if (!studio) {
+      buildLesson();
+      // On phones the lesson text starts folded so the synth is reachable without a long scroll.
+      $('#lesson-more').open = !window.matchMedia('(max-width: 860px)').matches;
+    }
   }
 
   function renderChallenges() {
     const L = LEVELS[level - 1];
     $('#challenges').innerHTML = L.challenges
-      .map((c) => `<li class="${done.has(c.id) ? 'done' : ''}"><span class="check" aria-hidden="true">${done.has(c.id) ? '★' : '☆'}</span>${c.text}</li>`)
+      .map((c) => `<li class="${done.has(c.id) ? 'done' : ''}"><span class="check" aria-hidden="true">${done.has(c.id) ? '★' : '☆'}</span>${I18N.lesson(L).challenge(c)}</li>`)
       .join('');
     const n = L.challenges.filter((c) => done.has(c.id)).length;
     $('#challenge-count').textContent = `${n}/${L.challenges.length}`;
@@ -364,6 +392,7 @@
   }
 
   function checkChallenges() {
+    if (isStudio()) return;
     const L = LEVELS[level - 1];
     let gained = null;
     for (const c of L.challenges) {
@@ -376,7 +405,7 @@
     renderChallenges();
     buildLevelNav();
     const all = L.challenges.every((c) => done.has(c.id));
-    toast(all ? `Level ${L.n} complete! ${level < LEVELS.length ? 'Next level unlocked →' : 'You mastered the Model D.'}` : '★ ' + gained.text);
+    toast(all ? I18N.t(level < LEVELS.length ? 'levelDone' : 'allDone', { n: L.n }) : '★ ' + I18N.lesson(L).challenge(gained));
   }
 
   let toastTimer;
@@ -396,19 +425,53 @@
     patch = withFx(levelPatches[level] ? levelPatches[level] : patchForLevel(level));
     for (const k of Object.keys(controls)) delete controls[k];
     buildPanel();
-    buildLesson();
+    buildView();
     buildLevelNav();
     sendParams();
     $('#mod-wheel').value = patch.modWheel;
     window.scrollTo({ top: 0 });
   }
 
+  function setMode(m, { scroll = true } = {}) {
+    if (m !== 'learn' && m !== 'studio') m = 'learn';
+    if (m !== mode) {
+      allOff();
+      if (isStudio()) store.set('studio', synthOf(patch)); else levelPatches[level] = { ...patch };
+      mode = m;
+      store.set('mode', mode);
+      patch = withFx(isStudio() ? studioPatch() : levelPatches[level] || patchForLevel(level));
+      sendParams();
+      $('#mod-wheel').value = patch.modWheel;
+    }
+    if (location.hash !== '#' + mode) history.replaceState(null, '', '#' + mode);
+    rebuild();
+    if (scroll) window.scrollTo({ top: 0 });
+  }
+
+  // Re-render everything that depends on the section or the language.
+  function rebuild() {
+    I18N.apply();
+    for (const k of Object.keys(controls)) delete controls[k];
+    buildPanel();
+    buildView();
+    buildLevelNav();
+    renderChallenges();
+    buildLoopBars();
+    renderLooper();
+    buildKeyboard();
+    renderLatency();
+    if (ctx) updatePower();
+    $('#lang-en').setAttribute('aria-pressed', I18N.lang === 'en');
+    $('#lang-fr').setAttribute('aria-pressed', I18N.lang === 'fr');
+  }
+
   function resetPatch() {
-    patch = withFx(patchForLevel(level));
+    patch = withFx(isStudio() ? defaultPatch() : patchForLevel(level));
+    if (isStudio()) store.set('studio', synthOf(patch));
     Object.values(controls).forEach((f) => f());
     $('#mod-wheel').value = patch.modWheel;
     sendParams();
-    toast('Patch reset to the lesson start');
+    toast(I18N.t(isStudio() ? 'patchInit' : 'patchReset'));
   }
 
   // ---------- presets ----------
@@ -419,11 +482,11 @@
     const byLevel = {};
     for (const [k, v] of Object.entries(PRESETS)) (byLevel[presetLevel(v)] ||= []).push(k);
     const groups = Object.keys(byLevel).sort().map((lv) => {
-      const label = `Level ${lv} · ${LEVELS[lv - 1].title}${lv > level ? ' (preview)' : ''}`;
+      const label = I18N.t('presetGroup', { n: lv, title: I18N.lesson(LEVELS[lv - 1]).title }) + (!isStudio() && lv > level ? I18N.t('preview') : '');
       return `<optgroup label="${label}">` + byLevel[lv].map((k) => `<option value="f:${k}">${k}</option>`).join('') + '</optgroup>';
     });
-    sel.innerHTML = '<option value="">Presets…</option>' + groups.join('') +
-      (Object.keys(user).length ? '<optgroup label="My patches">' + Object.keys(user).map((k) => `<option value="u:${k}">${k}</option>`).join('') + '</optgroup>' : '');
+    sel.innerHTML = `<option value="">${I18N.t('presets')}</option>` + groups.join('') +
+      (Object.keys(user).length ? `<optgroup label="${I18N.t('myPatches')}">` + Object.keys(user).map((k) => `<option value="u:${k}">${k}</option>`).join('') + '</optgroup>' : '');
   }
   function loadPreset(v) {
     if (!v) return;
@@ -432,7 +495,8 @@
     if (!src) return;
     patch = withFx({ ...defaultPatch(), ...synthOf(src) });
     const needs = presetLevel(src);
-    if (needs > level) toast(`This preset also uses Level ${needs} controls you can't see yet`);
+    if (!isStudio() && needs > level) toast(I18N.t('presetNeeds', { n: needs }));
+    if (isStudio()) store.set('studio', synthOf(patch));
     Object.values(controls).forEach((f) => f());
     $('#mod-wheel').value = patch.modWheel;
     if (v.startsWith('f:')) stats.presets.add(v);
@@ -451,7 +515,7 @@
     buildPresets();
     $('#preset-select').value = 'u:' + name;
     checkChallenges();
-    toast('Saved “' + name + '”');
+    toast(I18N.t('saved', { name }));
   }
 
   // ---------- pedalboard ----------
@@ -462,11 +526,12 @@
       const on = PARAMS.find((d) => d.pedal === pd.id && d.type === 'toggle');
       const el = document.createElement('div');
       el.className = 'pedal pedal-' + pd.id;
+      const P = I18N.pedal(pd);
       el.innerHTML = `<div class="pedal-knobs"></div>
-        <div class="pedal-name">${pd.name}</div>
-        <p class="pedal-blurb">${pd.blurb}</p>
+        <div class="pedal-name">${P.name}</div>
+        <p class="pedal-blurb">${P.blurb}</p>
         <span class="led" aria-hidden="true"></span>
-        <button type="button" class="footswitch" aria-label="${pd.name} on/off"></button>`;
+        <button type="button" class="footswitch" aria-label="${I18N.t('onOff', { name: P.name })}"></button>`;
       for (const d of PARAMS.filter((d) => d.pedal === pd.id && !d.type)) $('.pedal-knobs', el).appendChild(makeKnob(d));
       const sw = $('.footswitch', el);
       sw.addEventListener('click', () => setParam(on.id, patch[on.id] ? 0 : 1));
@@ -489,15 +554,15 @@
   function renderLooper() {
     const st = looper ? looper.state : looperPrefs;
     const s = looper ? looper.status() : { running: false, recording: false, layers: 0, notes: 0, loopBeats: st.bars * 4 };
-    const label = s.recording ? (s.layers || s.notes ? 'Overdub' : 'Recording') : s.running ? 'Playing' : s.notes ? 'Stopped' : 'Empty';
-    $('#loop-state').textContent = label;
+    const label = s.recording ? (s.layers || s.notes ? 'loopOverdub' : 'loopRecording') : s.running ? 'loopPlaying' : s.notes ? 'loopStopped' : 'loopEmpty';
+    $('#loop-state').textContent = I18N.t(label);
     $('#looper').dataset.state = s.recording ? 'rec' : s.running ? 'play' : 'idle';
     $('#loop-rec').setAttribute('aria-pressed', s.recording);
-    $('#loop-play').textContent = s.running ? '■ Stop' : '▶ Play';
+    $('#loop-play').textContent = I18N.t(s.running ? 'loopStop' : 'loopPlay');
     $('#loop-play').disabled = !s.running && !s.notes;
     $('#loop-undo').disabled = !s.notes;
     $('#loop-clear').disabled = !s.notes && !s.running;
-    $('#loop-layers').textContent = s.notes ? `${s.layers} take${s.layers === 1 ? '' : 's'} · ${s.notes} notes` : 'Press Rec, then play';
+    $('#loop-layers').textContent = s.notes ? I18N.t('loopTakes', { takes: s.layers, notes: s.notes }) : I18N.t('loopHint');
     $('#loop-bpm').value = st.bpm;
     $('#loop-bars').value = st.bars;
     $('#loop-bars').disabled = !!(s.notes || s.running);
@@ -506,7 +571,13 @@
     const beats = $('#loop-beats');
     if (beats.childElementCount !== s.loopBeats) beats.innerHTML = '<i></i>'.repeat(s.loopBeats);
   }
+  function buildLoopBars() {
+    const sel = $('#loop-bars'), cur = (looper ? looper.state : looperPrefs).bars;
+    sel.innerHTML = [1, 2, 4, 8].map((n) => `<option value="${n}">${n === 1 ? I18N.t('bar1') : I18N.t('bars', { n })}</option>`).join('');
+    sel.value = cur;
+  }
   function looperUI() {
+    buildLoopBars();
     $('#loop-rec').addEventListener('click', () => withLooper((l) => l.rec()));
     $('#loop-play').addEventListener('click', () => withLooper((l) => l.toggle()));
     $('#loop-undo').addEventListener('click', () => withLooper((l) => l.undo()));
@@ -538,7 +609,25 @@
   }
 
   // ---------- keyboard ----------
-  const KEYMAP = { a: 0, w: 1, s: 2, e: 3, d: 4, f: 5, t: 6, g: 7, y: 8, h: 9, u: 10, j: 11, k: 12, o: 13, l: 14, p: 15, ';': 16, "'": 17 };
+  // Physical key positions (KeyboardEvent.code), so the piano layout is the same on
+  // QWERTY, AZERTY or QWERTZ keyboards. Labels show the letter printed on the user's key.
+  const KEYMAP = { KeyA: 0, KeyW: 1, KeyS: 2, KeyE: 3, KeyD: 4, KeyF: 5, KeyT: 6, KeyG: 7, KeyY: 8, KeyH: 9, KeyU: 10, KeyJ: 11, KeyK: 12, KeyO: 13, KeyL: 14, KeyP: 15, Semicolon: 16, Quote: 17 };
+  const QWERTY = { KeyA: 'A', KeyW: 'W', KeyS: 'S', KeyE: 'E', KeyD: 'D', KeyF: 'F', KeyT: 'T', KeyG: 'G', KeyY: 'Y', KeyH: 'H', KeyU: 'U', KeyJ: 'J', KeyK: 'K', KeyO: 'O', KeyL: 'L', KeyP: 'P', Semicolon: ';', Quote: "'", KeyZ: 'Z', KeyX: 'X' };
+  const AZERTY = { ...QWERTY, KeyA: 'Q', KeyW: 'Z', KeyZ: 'W', Semicolon: 'M', Quote: 'Ù' };
+  // Best guess until the browser tells us the real layout (layout map, or the first key press).
+  const keyLabels = { ...(I18N.lang === 'fr' ? AZERTY : QWERTY) };
+  const keyLabel = (code) => keyLabels[code] || '';
+  function learnLabels(map) {
+    let changed = false;
+    for (const code of Object.keys(QWERTY)) {
+      const ch = map(code);
+      if (ch && ch.length === 1 && keyLabels[code] !== ch.toUpperCase()) { keyLabels[code] = ch.toUpperCase(); changed = true; }
+    }
+    if (changed) buildKeyboard();
+  }
+  if (navigator.keyboard && navigator.keyboard.getLayoutMap) {
+    navigator.keyboard.getLayoutMap().then((m) => learnLabels((code) => m.get(code))).catch(() => {});
+  }
   function buildKeyboard() {
     const kb = $('#keyboard');
     kb.innerHTML = '';
@@ -558,13 +647,15 @@
       if (black) k.style.left = `calc(${wi * ww}% - ${ww * 0.3}%)`, k.style.width = ww * 0.6 + '%';
       else { k.style.left = wi * ww + '%'; k.style.width = ww + '%'; wi++; }
       const rel = n - 12 * (octave + 1);
-      const ch = Object.keys(KEYMAP).find((c) => KEYMAP[c] === rel);
-      if (ch) k.innerHTML = `<span>${ch.toUpperCase()}</span>`;
+      const code = Object.keys(KEYMAP).find((c) => KEYMAP[c] === rel);
+      if (code) k.innerHTML = `<span>${keyLabel(code)}</span>`;
       if (n % 12 === 0) k.insertAdjacentHTML('beforeend', `<em>${noteName(n)}</em>`);
       if (held.has(n)) k.classList.add('down');
       kb.appendChild(k);
     }
-    $('#octave-readout').textContent = (window.innerWidth < 560 ? 'Oct ' : 'Octave ') + octave;
+    $('#octave-readout').textContent = I18N.t(window.innerWidth < 560 ? 'oct' : 'octave', { n: octave });
+    $('#hint-down').textContent = ' ' + keyLabel('KeyZ');
+    $('#hint-up').textContent = keyLabel('KeyX') + ' ';
   }
   const keyboardSize = () => (window.innerWidth < 500 ? 'small' : window.innerWidth < 700 ? 'mid' : 'wide');
   let pointerNote = new Map();
@@ -591,16 +682,16 @@
     const typing = (e) => e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && /text|number|search/.test(e.target.type));
     window.addEventListener('keydown', (e) => {
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || typing(e)) return;
-      const key = e.key.toLowerCase();
-      if (key === 'z' || key === 'x') { allOff(); octave = Math.min(7, Math.max(1, octave + (key === 'x' ? 1 : -1))); buildKeyboard(); return; }
-      if (key === 'r') { withLooper((l) => l.rec()); e.preventDefault(); return; }
-      if (key === ' ' && !/BUTTON/.test(e.target.tagName)) { withLooper((l) => l.toggle()); e.preventDefault(); return; }
-      if (key === 'shift' && e.location === 2) { setSustain(!sustain); return; } // right Shift toggles hold
-      if (key in KEYMAP) { noteOn(12 * (octave + 1) + KEYMAP[key]); e.preventDefault(); }
+      const code = e.code;
+      if (code in QWERTY && e.key && e.key.length === 1) learnLabels((c) => (c === code ? e.key : null));
+      if (code === 'KeyZ' || code === 'KeyX') { allOff(); octave = Math.min(7, Math.max(1, octave + (code === 'KeyX' ? 1 : -1))); buildKeyboard(); return; }
+      if (code === 'KeyR') { withLooper((l) => l.rec()); e.preventDefault(); return; }
+      if (code === 'Space' && !/BUTTON/.test(e.target.tagName)) { withLooper((l) => l.toggle()); e.preventDefault(); return; }
+      if (code === 'ShiftRight') { setSustain(!sustain); return; } // right Shift toggles hold
+      if (code in KEYMAP) { noteOn(12 * (octave + 1) + KEYMAP[code]); e.preventDefault(); }
     });
     window.addEventListener('keyup', (e) => {
-      const key = e.key.toLowerCase();
-      if (key in KEYMAP) noteOff(12 * (octave + 1) + KEYMAP[key]);
+      if (e.code in KEYMAP) noteOff(12 * (octave + 1) + KEYMAP[e.code]);
     });
     window.addEventListener('blur', allOff);
     // A mouse/touch click shouldn't leave focus on a button or menu, or Space/letters would
@@ -651,24 +742,24 @@
 
   // ---------- render loop ----------
   function frame() {
-    const L = LEVELS[level - 1];
+    const L = view();
     const sr = ctx ? ctx.sampleRate : 48000;
     if (L.viz.includes('scope')) Viz.scope($('#viz-scope'), analyser);
     if (L.viz.includes('spectrum')) Viz.spectrum($('#viz-spectrum'), analyser, sr);
     if (L.viz.includes('filter')) Viz.filter($('#viz-filter'), patch, tele && tele.stageA ? tele.fc : null);
     if (L.viz.includes('env')) Viz.envelopes($('#viz-env'), patch, tele);
     drawLooper();
-    if (tele && L.viz.includes('filter')) $('#fc-readout').textContent = tele.stageA ? 'live cutoff ' + formatValue(PARAM_BY_ID.cutoff, tele.fc) : '';
+    if (tele && L.viz.includes('filter')) $('#fc-readout').textContent = tele.stageA ? I18N.t('liveCutoff', { v: formatValue(PARAM_BY_ID.cutoff, tele.fc) }) : '';
     requestAnimationFrame(frame);
   }
 
   // ---------- init ----------
   function init() {
     if (level < 1 || level > LEVELS.length) level = 1;
+    I18N.apply();
     buildLevelNav();
     buildPanel();
-    buildLesson();
-    buildPresets();
+    buildView();
     buildKeyboard();
     keyboardPointer();
     computerKeys();
@@ -680,6 +771,11 @@
     $('#power').addEventListener('click', () => startAudio());
     for (const ev of ['pointerup', 'touchend', 'keydown', 'click']) document.addEventListener(ev, wake, true);
     $('#reset').addEventListener('click', resetPatch);
+    $('#mode-learn').addEventListener('click', (e) => { e.preventDefault(); setMode('learn'); });
+    $('#mode-studio').addEventListener('click', (e) => { e.preventDefault(); setMode('studio'); });
+    window.addEventListener('hashchange', () => setMode(location.hash === '#studio' ? 'studio' : 'learn'));
+    $('#lang-en').addEventListener('click', () => { I18N.set('en'); rebuild(); });
+    $('#lang-fr').addEventListener('click', () => { I18N.set('fr'); rebuild(); });
     $('#prev-level').addEventListener('click', () => goLevel(level - 1));
     $('#next-level').addEventListener('click', () => goLevel(level + 1));
     $('#oct-down').addEventListener('click', () => { allOff(); octave = Math.max(1, octave - 1); buildKeyboard(); });
@@ -690,13 +786,13 @@
     $('#reset-progress').addEventListener('click', (e) => {
       const b = e.currentTarget;
       if (!armed) {
-        b.textContent = 'Click again to erase all stars';
-        armed = setTimeout(() => { armed = null; b.textContent = 'Reset progress'; }, 3000);
+        b.textContent = I18N.t('resetConfirm');
+        armed = setTimeout(() => { armed = null; b.textContent = I18N.t('resetProgress'); }, 3000);
         return;
       }
-      clearTimeout(armed); armed = null; b.textContent = 'Reset progress';
+      clearTimeout(armed); armed = null; b.textContent = I18N.t('resetProgress');
       done.clear(); store.set('done', []); renderChallenges(); buildLevelNav();
-      toast('Progress reset');
+      toast(I18N.t('progressReset'));
     });
     let lastSize = keyboardSize();
     window.addEventListener('resize', () => {
@@ -707,6 +803,7 @@
     const syncPad = () => document.body.style.setProperty('--kb-h', keysArea.offsetHeight + 16 + 'px');
     if (window.ResizeObserver) new ResizeObserver(syncPad).observe(keysArea);
     syncPad();
+    setMode(mode, { scroll: false });
     requestAnimationFrame(frame);
   }
   init();

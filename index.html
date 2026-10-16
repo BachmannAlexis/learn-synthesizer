@@ -4,24 +4,32 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MoogLab</title>
-  <meta name="description" content="Learn subtractive synthesis step by step on a simulated Minimoog-style synthesizer.">
+  <meta name="description" content="Learn subtractive synthesis step by step on a simulated Minimoog-style synthesizer, then play freely in the Studio. English / français.">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
       <span class="logo">moog<span>lab</span></span>
-      <span class="tag">learn synthesis on a simulated Model D</span>
+      <span class="tag" data-i18n="tagline">learn synthesis on a simulated Model D</span>
     </div>
-    <div class="progress" title="Overall progress">
+    <nav class="modes" data-i18n-aria="sections" aria-label="Sections">
+      <a id="mode-learn" class="mode-tab" href="#learn" data-i18n="modeLearn">Learn</a>
+      <a id="mode-studio" class="mode-tab" href="#studio" data-i18n="modeStudio">Studio</a>
+    </nav>
+    <div class="progress" data-i18n-title="progress" title="Overall progress">
       <div id="overall" class="bar"><i></i></div>
       <span id="overall-text"></span>
     </div>
     <span id="latency" class="latency" aria-live="polite"></span>
-    <button id="power" class="power" type="button">Start audio</button>
+    <div class="lang" role="group" data-i18n-aria="language" aria-label="Language">
+      <button id="lang-en" type="button" lang="en">EN</button>
+      <button id="lang-fr" type="button" lang="fr">FR</button>
+    </div>
+    <button id="power" class="power" type="button" data-i18n="startAudio">Start audio</button>
   </header>
 
-  <nav id="levels" class="levels" aria-label="Levels"></nav>
+  <nav id="levels" class="levels" data-i18n-aria="levels" aria-label="Levels"></nav>
 
   <main class="layout">
     <div class="col-lesson">
@@ -29,57 +37,66 @@
         <p id="lesson-kicker" class="kicker"></p>
         <h1 id="lesson-title"></h1>
         <details id="lesson-more" class="lesson-more" open>
-          <summary>Read the lesson</summary>
+          <summary data-i18n="readLesson">Read the lesson</summary>
           <div id="lesson-theory" class="theory"></div>
-          <h2>Try this</h2>
+          <h2 data-i18n="tryThis">Try this</h2>
           <ul id="lesson-tips" class="tips"></ul>
         </details>
       </article>
       <section class="tasks card" aria-labelledby="tasks-title">
-        <h2 id="tasks-title">Challenges <span id="challenge-count" class="count"></span></h2>
+        <h2 id="tasks-title"><span data-i18n="challenges">Challenges</span> <span id="challenge-count" class="count"></span></h2>
         <ul id="challenges" class="challenges"></ul>
-        <p class="hint">A challenge completes while a note is sounding, so you hear the result.</p>
+        <p class="hint" data-i18n="hint">A challenge completes while a note is sounding, so you hear the result.</p>
         <div class="lesson-nav">
-          <button id="prev-level" type="button">← Previous</button>
-          <button id="next-level" type="button">Next level →</button>
+          <button id="prev-level" type="button" data-i18n="prev">← Previous</button>
+          <button id="next-level" type="button" data-i18n="next">Next level →</button>
         </div>
-        <button id="reset-progress" class="link" type="button">Reset progress</button>
+        <button id="reset-progress" class="link" type="button" data-i18n="resetProgress">Reset progress</button>
       </section>
     </div>
 
     <div class="col-synth">
-      <div class="flow" id="flow" aria-label="Signal flow">
-        <div data-block="vco"><b>VCO</b><small>oscillator</small></div>
-        <div data-block="mix"><b>MIX</b><small>mixer</small></div>
-        <div data-block="vcf"><b>VCF</b><small>ladder filter</small></div>
-        <div data-block="vca"><b>VCA</b><small>amplifier</small></div>
-        <div data-block="out"><b>OUT</b><small>speaker</small></div>
-        <div data-block="env" class="mod"><b>ENV</b><small>contours</small></div>
-        <div data-block="lfo" class="mod"><b>LFO</b><small>modulation</small></div>
+      <section id="studio-intro" class="studio-intro" hidden>
+        <div>
+          <p class="kicker" data-i18n="studioKicker">Studio · free play</p>
+          <h1 data-i18n="studioTitle">Your Model D</h1>
+          <p class="studio-text" data-i18n="studioText"></p>
+        </div>
+        <ul id="studio-tips" class="tips"></ul>
+      </section>
+
+      <div class="flow" id="flow" data-i18n-aria="signalFlow" aria-label="Signal flow">
+        <div data-block="vco"><b>VCO</b><small data-i18n="flowVco">oscillator</small></div>
+        <div data-block="mix"><b>MIX</b><small data-i18n="flowMix">mixer</small></div>
+        <div data-block="vcf"><b>VCF</b><small data-i18n="flowVcf">ladder filter</small></div>
+        <div data-block="vca"><b>VCA</b><small data-i18n="flowVca">amplifier</small></div>
+        <div data-block="out"><b>OUT</b><small data-i18n="flowOut">speaker</small></div>
+        <div data-block="env" class="mod"><b>ENV</b><small data-i18n="flowEnv">contours</small></div>
+        <div data-block="lfo" class="mod"><b>LFO</b><small data-i18n="flowLfo">modulation</small></div>
       </div>
 
-      <section class="case" aria-label="Synthesizer panel">
+      <section class="case" data-i18n-aria="synthPanel" aria-label="Synthesizer panel">
         <div class="panel-tools">
           <div id="presets" class="presets">
-            <select id="preset-select" aria-label="Presets"></select>
+            <select id="preset-select" data-i18n-aria="presetsLabel" aria-label="Presets"></select>
             <form id="save-form" class="save-form">
-              <input id="patch-name" type="text" maxlength="40" placeholder="Patch name" aria-label="Patch name">
-              <button id="save-patch" type="submit">Save patch</button>
+              <input id="patch-name" type="text" maxlength="40" data-i18n-placeholder="patchName" data-i18n-aria="patchName" placeholder="Patch name" aria-label="Patch name">
+              <button id="save-patch" type="submit" data-i18n="savePatch">Save patch</button>
             </form>
           </div>
-          <p class="panel-hint">Drag knobs up or down · Shift for fine · double-click to reset</p>
+          <p class="panel-hint" data-i18n="panelHint">Drag knobs up or down · Shift for fine · double-click to reset</p>
           <button id="reset" type="button">Reset patch</button>
         </div>
         <div id="panel" class="panel"></div>
       </section>
 
       <section class="board" aria-labelledby="board-title">
-        <h2 id="board-title" class="board-title">Pedalboard <small>effects after the synth · loop station</small></h2>
+        <h2 id="board-title" class="board-title"><span data-i18n="pedalboard">Pedalboard</span> <small data-i18n="pedalboardSub">effects after the synth · loop station</small></h2>
         <div class="board-row">
           <div id="looper" class="looper" data-state="idle">
             <div class="looper-head">
-              <span class="pedal-name">Loop Station</span>
-              <span id="loop-state" class="loop-state">Empty</span>
+              <span class="pedal-name" data-i18n="loopStation">Loop Station</span>
+              <span id="loop-state" class="loop-state"></span>
             </div>
             <div class="loop-track" aria-hidden="true">
               <div id="loop-beats" class="loop-beats"></div>
@@ -87,16 +104,16 @@
             </div>
             <p id="loop-layers" class="loop-layers"></p>
             <div class="loop-buttons">
-              <button id="loop-rec" class="loop-btn rec" type="button" title="Record / overdub (R)">● Rec</button>
-              <button id="loop-play" class="loop-btn" type="button" title="Play / stop (Space)">▶ Play</button>
-              <button id="loop-undo" class="loop-btn" type="button" title="Remove the last take">Undo</button>
-              <button id="loop-clear" class="loop-btn" type="button" title="Erase the loop">Clear</button>
+              <button id="loop-rec" class="loop-btn rec" type="button" data-i18n="loopRec" data-i18n-title="loopRecTitle">● Rec</button>
+              <button id="loop-play" class="loop-btn" type="button" data-i18n-title="loopPlayTitle">▶ Play</button>
+              <button id="loop-undo" class="loop-btn" type="button" data-i18n="loopUndo" data-i18n-title="loopUndoTitle">Undo</button>
+              <button id="loop-clear" class="loop-btn" type="button" data-i18n="loopClear" data-i18n-title="loopClearTitle">Clear</button>
             </div>
             <div class="loop-settings">
-              <label>Tempo <input id="loop-bpm" type="number" min="40" max="240" step="1" inputmode="numeric"> BPM</label>
-              <label>Length <select id="loop-bars" title="Clear the loop to change its length"><option value="1">1 bar</option><option value="2">2 bars</option><option value="4">4 bars</option><option value="8">8 bars</option></select></label>
-              <label class="check"><input id="loop-click" type="checkbox"> Click</label>
-              <label class="check"><input id="loop-quant" type="checkbox"> Snap to 1/16</label>
+              <label><span data-i18n="tempo">Tempo</span> <input id="loop-bpm" type="number" min="40" max="240" step="1" inputmode="numeric"> <span data-i18n="bpm">BPM</span></label>
+              <label><span data-i18n="length">Length</span> <select id="loop-bars" data-i18n-title="lengthTitle"></select></label>
+              <label class="check"><input id="loop-click" type="checkbox"> <span data-i18n="click">Click</span></label>
+              <label class="check"><input id="loop-quant" type="checkbox"> <span data-i18n="snap">Snap to 1/16</span></label>
             </div>
           </div>
           <div id="pedals" class="pedals"></div>
@@ -104,10 +121,10 @@
       </section>
 
       <div class="viz-grid">
-        <figure class="viz" data-viz="scope"><figcaption>Oscilloscope <small>shape over time</small></figcaption><canvas id="viz-scope"></canvas></figure>
-        <figure class="viz" data-viz="spectrum"><figcaption>Spectrum <small>harmonics</small></figcaption><canvas id="viz-spectrum"></canvas></figure>
-        <figure class="viz" data-viz="filter"><figcaption>Ladder response <small id="fc-readout"></small></figcaption><canvas id="viz-filter"></canvas></figure>
-        <figure class="viz" data-viz="env"><figcaption>Contours <small>ADSR over time</small></figcaption><canvas id="viz-env"></canvas></figure>
+        <figure class="viz" data-viz="scope"><figcaption><span data-i18n="scope">Oscilloscope</span> <small data-i18n="scopeSub">shape over time</small></figcaption><canvas id="viz-scope"></canvas></figure>
+        <figure class="viz" data-viz="spectrum"><figcaption><span data-i18n="spectrum">Spectrum</span> <small data-i18n="spectrumSub">harmonics</small></figcaption><canvas id="viz-spectrum"></canvas></figure>
+        <figure class="viz" data-viz="filter"><figcaption><span data-i18n="ladder">Ladder response</span> <small id="fc-readout"></small></figcaption><canvas id="viz-filter"></canvas></figure>
+        <figure class="viz" data-viz="env"><figcaption><span data-i18n="contours">Contours</span> <small data-i18n="contoursSub">ADSR over time</small></figcaption><canvas id="viz-env"></canvas></figure>
       </div>
     </div>
   </main>
@@ -115,25 +132,27 @@
   <footer class="keys-area">
     <div class="keys-left">
       <div id="perf" class="wheels" hidden>
-        <label class="wheel"><input id="bend-wheel" type="range" min="-2" max="2" step="0.01" value="0" aria-label="Pitch bend"><span>Pitch</span></label>
-        <label class="wheel"><input id="mod-wheel" type="range" min="0" max="1" step="0.01" value="0" aria-label="Modulation wheel"><span>Mod</span></label>
+        <label class="wheel"><input id="bend-wheel" type="range" min="-2" max="2" step="0.01" value="0" data-i18n-aria="pitchBend" aria-label="Pitch bend"><span data-i18n="pitch">Pitch</span></label>
+        <label class="wheel"><input id="mod-wheel" type="range" min="0" max="1" step="0.01" value="0" data-i18n-aria="modWheel" aria-label="Modulation wheel"><span data-i18n="mod">Mod</span></label>
       </div>
       <div class="octave">
-        <button id="oct-down" type="button" aria-label="Octave down">◀<span class="kbd-hint"> Z</span></button>
+        <button id="oct-down" type="button" data-i18n-aria="octDown" aria-label="Octave down">◀<span class="kbd-hint" id="hint-down"> Z</span></button>
         <span id="octave-readout"></span>
-        <button id="oct-up" type="button" aria-label="Octave up"><span class="kbd-hint">X </span>▶</button>
+        <button id="oct-up" type="button" data-i18n-aria="octUp" aria-label="Octave up"><span class="kbd-hint" id="hint-up">X </span>▶</button>
       </div>
-      <button id="hold" class="hold" type="button" aria-pressed="false" title="Sustain: notes keep sounding after you let go (right Shift, MIDI pedal)">Hold</button>
+      <button id="hold" class="hold" type="button" aria-pressed="false" data-i18n="hold" data-i18n-title="holdTitle">Hold</button>
       <div id="note-readout" class="note-readout">—</div>
     </div>
-    <div id="keyboard" class="keyboard" aria-label="Keyboard"></div>
+    <div id="keyboard" class="keyboard" data-i18n-aria="keyboard" aria-label="Keyboard"></div>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script src="js/i18n.js"></script>
   <script src="js/dsp.js"></script>
   <script src="js/params.js"></script>
   <script src="js/lessons.js"></script>
+  <script src="js/lessons-fr.js"></script>
   <script src="js/viz.js"></script>
   <script src="js/fx.js"></script>
   <script src="js/looper.js"></script>
