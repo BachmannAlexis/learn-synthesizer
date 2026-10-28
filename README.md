@@ -13,7 +13,8 @@ Two sections, switched from the top bar:
 - Every panel section (each oscillator, mixer, filter, envelopes, modulation, output), the pedalboard and each scope can be **folded** to a one-line summary of its settings; "Fold all" folds everything, and the choice is remembered.
 - **Studio** — the whole synth unlocked for free play: presets, pedals, loop station and all scopes. Your Studio sound is saved separately from the lessons.
 
-- **Pedals / Pédales** — a guitar & bass pedal simulator: 15 pedals (compressor, wah, envelope filter, octaver, overdrive, distortion, fuzz, bass drive, EQ, chorus, phaser, flanger, tremolo, delay, reverb) plus amp & cabinet. Build a board, reorder it (or sort it into the classic order), use presets, and hear it with demo riffs, the keyboard (a plucked-string model, in tune to within a cent), an audio file or your own instrument through a microphone or audio interface. Includes a tuner.
+- **Pedals / Pédales** — a guitar & bass pedal simulator: 15 pedals (compressor, wah, envelope filter, octaver, overdrive, distortion, fuzz, bass drive, EQ, chorus, phaser, flanger, tremolo, delay, reverb) plus amp & cabinet. Build a board, reorder it (or sort it into the classic order), use presets, and hear it with demo riffs, the keyboard (a plucked-string model, in tune to within a cent), an audio file or your own instrument through a microphone or audio interface. Includes a tuner. The keyboard and riffs can also play the **Moog synth through the pedalboard**.
+- **Learn how it works** — every pedal (and the amp) has a "?" panel: what it does, how it works, the exact maths the app computes, what to listen for, a signal-path diagram and a live graph (clipping curve, frequency response, compressor curve, octave-down waveform, LFO movement or impulse response) that follows the knobs. The graphs use the same filter formulas as the browser (checked against Web Audio to 0.00 dB). Each synth lesson also has a "How it's simulated (the maths)" section.
 
 The interface and all lessons are in **English and French** (EN/FR switch; it starts in your browser's language).
 The computer keyboard uses physical key positions, so it plays the same on QWERTY, AZERTY or QWERTZ keyboards, and the letters on the piano keys match your layout.
@@ -75,7 +76,7 @@ js/fx.js          effect pedals (Web Audio graph)
 js/looper.js      loop station (recording, overdub, scheduling)
 js/demos.js       auto-play demo script for each level
 js/guitar/        pedal simulator: catalog (pedals, presets, riffs), strings (Karplus–Strong),
-                  pitch (YIN tuner), rig (Web Audio pedal chain), section (UI)
+                  pitch (YIN tuner), rig (Web Audio pedal chain), learn (explanations, maths, graphs), section (UI)
 js/app.js         UI, keyboard, MIDI, progress
 tests/            DSP, curriculum, looper and translation tests (npm test)
 .github/workflows/pages.yml   tests, then publishes to GitHub Pages on every push to main

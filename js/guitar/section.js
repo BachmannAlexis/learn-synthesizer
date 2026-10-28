@@ -25,9 +25,10 @@ const GuitarSection = (() => {
     instrument: 'guitar',
     boards: { guitar: fromPreset('guitar', 'Clean & shiny'), bass: fromPreset('bass', 'Rock grind') },
     riff: { guitar: Object.keys(GP_RIFFS.guitar)[0], bass: Object.keys(GP_RIFFS.bass)[0] },
-    inputGain: 1, mute: false,
+    inputGain: 1, mute: false, voice: 'strings', moogSound: 'Fat Bass',
     ...(saved || {}),
   };
+  if (!PRESETS[state.moogSound]) state.moogSound = 'Fat Bass';
   // Pedals saved by an older version may miss new controls: fill them with defaults.
   for (const inst of Object.keys(state.boards)) {
     const b = state.boards[inst];
@@ -46,8 +47,20 @@ const GuitarSection = (() => {
     rig = createGuitarRig(ctx);
     rig.setInputGain(state.inputGain);
     applyBoard();
+    routeVoice();
     return rig;
   }
+  // The Moog synth can be the "instrument" plugged into the pedalboard.
+  const usesSynth = () => state.voice === 'moog';
+  function routeVoice() {
+    if (!rig || !active) return;
+    api.routeSynth(usesSynth() ? rig.input : null);
+    if (usesSynth()) api.setSynthSound(state.moogSound);
+  }
+  const synthPlayer = {
+    play(notes, t, dur) { api.synthNoteAt(Math.min(...notes), t, dur); }, // monophonic: the lowest note
+    stop() { api.synthStop(); },
+  };
   function applyBoard() {
     if (!rig) return;
     rig.setChain(board().chain);
@@ -74,6 +87,7 @@ const GuitarSection = (() => {
     renderBoard();
     renderTunerStrings();
     $('#gp-mute').checked = state.mute;
+    if (learn.target) openLearn(learn.target);
   }
 
   function renderSources() {
@@ -86,6 +100,13 @@ const GuitarSection = (() => {
     $('#gp-mic').setAttribute('aria-pressed', !!(rig && rig.micOn));
     $('#gp-mic-note').hidden = !(rig && rig.micOn);
     $('#gp-file-stop').hidden = !(rig && rig.filePlaying);
+    $('#gp-voice-strings').setAttribute('aria-pressed', !usesSynth());
+    $('#gp-voice-moog').setAttribute('aria-pressed', usesSynth());
+    $('#gp-moog-row').hidden = !usesSynth();
+    $('#gp-moog-hint').hidden = !usesSynth();
+    const ms = $('#gp-moog-sound');
+    ms.innerHTML = Object.keys(PRESETS).map((k) => `<option value="${k}">${k}</option>`).join('');
+    ms.value = state.moogSound;
     const k = $('#gp-in-knob');
     k.innerHTML = '';
     const def = { id: 'gpInput', labels: { en: STRINGS.en.gpInputLevel, fr: STRINGS.fr.gpInputLevel }, min: 0.1, max: 4, def: 1, curve: 'log', fmt: 'x' };
@@ -105,6 +126,7 @@ const GuitarSection = (() => {
       if (rig) rig.updatePedal(p);
       const f = knobsIO.get(p.uid + id); if (f) f();
       renderFlow();
+      if (learn.target === p.uid) drawLearn();
     });
   }
 
@@ -128,6 +150,7 @@ const GuitarSection = (() => {
           <button type="button" class="gp-mini" data-act="left" title="${t('gpMoveLeft')}" aria-label="${t('gpMoveLeft')}" ${i === 0 ? 'disabled' : ''}>◀</button>
           <span class="gp-cat">${L(GP_CATEGORIES[P.cat].name)}</span>
           <button type="button" class="gp-mini" data-act="right" title="${t('gpMoveRight')}" aria-label="${t('gpMoveRight')}" ${i === b.chain.length - 1 ? 'disabled' : ''}>▶</button>
+          <button type="button" class="gp-mini gp-q" data-act="learn" title="${t('gpLearnBtn')}" aria-label="${t('gpLearnBtn')}: ${L(P.name)}">?</button>
           <button type="button" class="gp-mini gp-x" data-act="remove" title="${t('gpRemove', { name: L(P.name) })}" aria-label="${t('gpRemove', { name: L(P.name) })}">✕</button>
         </div>
         <div class="pedal-knobs"></div>
@@ -143,9 +166,10 @@ const GuitarSection = (() => {
       }
       el.addEventListener('click', (e) => {
         const act = e.target.closest('[data-act]');
+        if (act && act.dataset.act === 'learn') { openLearn(p.uid); return; }
         if (act) {
           const a = act.dataset.act;
-          if (a === 'remove') b.chain.splice(i, 1);
+          if (a === 'remove') { b.chain.splice(i, 1); if (learn.target === p.uid) closeLearn(); }
           else { const j = a === 'left' ? i - 1 : i + 1; [b.chain[i], b.chain[j]] = [b.chain[j], b.chain[i]]; }
           structureChanged();
         }
@@ -167,6 +191,7 @@ const GuitarSection = (() => {
       b.amp[id] = d.type ? v : Math.min(d.max, Math.max(d.min, v));
       save(); if (rig) rig.setAmp(b.amp);
       const f = knobsIO.get('amp' + id); if (f) f();
+      if (learn.target === 'amp') drawLearn();
     }, register: (id, fn) => knobsIO.set('amp' + id, fn) };
     for (const d of GP_AMP.params) ampEl.appendChild(d.type ? api.makeChoice(d, aio) : api.makeKnob(d, aio));
     $('#gp-amp-name').textContent = L(GP_AMP.name);
@@ -183,6 +208,40 @@ const GuitarSection = (() => {
   }
 
   function structureChanged() { save(); if (rig) rig.setChain(board().chain); renderBoard(); }
+
+  // ---------- "How it works" panel ----------
+  const learn = { target: null };
+  function learnSubject() {
+    if (learn.target === 'amp') return { type: 'amp', name: GP_AMP.name, params: board().amp };
+    const p = board().chain.find((x) => x.uid === learn.target);
+    return p && { type: p.type, name: GP_PEDALS[p.type].name, params: p.params };
+  }
+  function openLearn(target) {
+    learn.target = target;
+    const s = learnSubject();
+    if (!s) return closeLearn();
+    const info = GP_LEARN[s.type];
+    $('#gp-learn').hidden = false;
+    $('#gp-learn-title').textContent = t('gpLearnTitle', { name: L(s.name) });
+    $('#gp-learn-what').innerHTML = L(info.what);
+    $('#gp-learn-how').innerHTML = L(info.how);
+    $('#gp-learn-math').innerHTML = info.math;
+    $('#gp-learn-listen').innerHTML = L(info.listen);
+    $('#gp-learn-diagram').innerHTML = info.diagram.map((d) => `<span class="gp-chip io">${typeof d === 'string' ? d : L(d)}</span>`).join('<i aria-hidden="true">→</i>');
+    const cap = { transfer: 'gpPlotTransfer', response: 'gpPlotResponse', compressor: 'gpPlotCompressor', octave: 'gpPlotOctave', lfo: 'gpPlotLfo', impulse: 'gpPlotImpulse' }[info.plot];
+    $('#gp-learn-caption').textContent = t(cap);
+    document.querySelectorAll('.gp-pedal, .gp-amp').forEach((e) => e.classList.toggle('learning', e.dataset.uid === target || (target === 'amp' && e.classList.contains('gp-amp'))));
+    drawLearn();
+  }
+  function drawLearn() {
+    const s = learnSubject();
+    if (s) GPLearnPlot.draw($('#gp-learn-plot'), s.type, s.params, { cab: board().amp.cab });
+  }
+  function closeLearn() {
+    learn.target = null;
+    $('#gp-learn').hidden = true;
+    document.querySelectorAll('.learning').forEach((e) => e.classList.remove('learning'));
+  }
 
   // ---------- tuner ----------
   const tuner = { buf: null, last: 0, reading: false, hold: 0 };
@@ -296,20 +355,38 @@ const GuitarSection = (() => {
     });
     $('#gp-clear').addEventListener('click', () => { board().chain = []; structureChanged(); });
     $('#gp-mute').addEventListener('change', (e) => { state.mute = e.target.checked; save(); if (rig) rig.setMuted(state.mute && tuner.reading); });
+    $('#gp-amp-learn').addEventListener('click', () => { openLearn('amp'); $('#gp-learn').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+    $('#gp-learn-close').addEventListener('click', closeLearn);
+    for (const v of ['strings', 'moog']) {
+      $('#gp-voice-' + v).addEventListener('click', async () => {
+        if (state.voice === v) return;
+        const playing = rig && rig.riffPlaying;
+        if (rig) rig.stopRiff();
+        api.allNotesOff();
+        state.voice = v; save();
+        await ensureRig();
+        routeVoice();
+        renderSources();
+        if (playing) toggleRiff();
+      });
+    }
+    $('#gp-moog-sound').addEventListener('change', (e) => { state.moogSound = e.target.value; save(); routeVoice(); });
   }
 
   async function toggleRiff() {
     const r = await ensureRig();
     if (!r) return;
     if (r.riffPlaying) r.stopRiff();
-    else r.playRiff(GP_RIFFS[state.instrument][state.riff[state.instrument]], state.instrument);
+    else r.playRiff(GP_RIFFS[state.instrument][state.riff[state.instrument]], state.instrument, usesSynth() ? synthPlayer : null);
     renderSources();
   }
 
   return {
     init(a) { api = a; bind(); render(); },
-    show() { active = true; api.setOctave(GP_INSTRUMENTS[state.instrument].octave); render(); },
-    hide() { active = false; if (rig) { rig.stopAll(); rig.disableMic(); } },
+    show() { active = true; api.setOctave(GP_INSTRUMENTS[state.instrument].octave); render(); routeVoice(); },
+    hide() { active = false; if (rig) { rig.stopAll(); rig.disableMic(); } api.routeSynth(null); },
+    get usesSynth() { return usesSynth(); },
+    prepare: ensureRig,
     render,
     frame,
     toggleRiff,

@@ -7,6 +7,7 @@
 const LEVELS = [
   {
     n: 1,
+    math: `<p>A digital oscillator keeps a <b>phase</b> φ that climbs from 0 to 1 once per cycle; each waveform is a simple function of φ. A hard jump (saw, square) contains harmonics above the Nyquist frequency that would fold back as noise, so the app smooths each jump with <b>PolyBLEP</b>.</p><p class="math">φ[n+1] = (φ[n] + f/f<sub>s</sub>) mod 1, &nbsp; f = 440 · 2<sup>(note − 69)/12</sup> · 2<sup>range − 2</sup></p><p class="math">saw = 2φ − 1, &nbsp; square = sign(½ − φ), &nbsp; triangle = 1 − 4|φ − ½|, &nbsp; sine = sin 2πφ</p><p class="math">saw(t) = (2/π) Σ<sub>k≥1</sub> (−1)<sup>k+1</sup> sin(kωt)/k, &nbsp; square(t) = (4/π) Σ sin((2k−1)ωt)/(2k−1)</p><p class="math">PolyBLEP: near each jump (t &lt; Δ or t &gt; 1 − Δ, Δ = f/f<sub>s</sub>) subtract a small polynomial — it removes aliasing</p>`,
     title: 'The Oscillator',
     subtitle: 'Pitch & timbre',
     summary: [
@@ -46,6 +47,7 @@ const LEVELS = [
   },
   {
     n: 2,
+    math: `<p>The ladder is four one-pole low-pass stages in series, each with the transistors' <b>tanh</b> curve, and the output fed back to the input. It runs twice per sample (oversampling) to stay stable and clean at high cutoffs.</p><p class="math">u = tanh(drive · x − k · s<sub>4</sub>), &nbsp; k = 4.2 · emphasis</p><p class="math">s<sub>i</sub> ← s<sub>i</sub> + g · (tanh s<sub>i−1</sub> − tanh s<sub>i</sub>), &nbsp; i = 1…4, &nbsp; g = 1 − e<sup>−2πf<sub>c</sub> / 2f<sub>s</sub></sup> &nbsp;(2× oversampled)</p><p class="math">H(s) = 1 / ((1 + s/ω<sub>c</sub>)⁴ + k) &nbsp;→ at k = 4 each stage turns 45°, the loop 180°: self-oscillation at ω<sub>c</sub></p><p class="math">types mix u and the stages: LP24 = s<sub>4</sub>, LP12 = s<sub>2</sub>, HP24 = u − 4s<sub>1</sub> + 6s<sub>2</sub> − 4s<sub>3</sub> + s<sub>4</sub>, BP = 2s<sub>1</sub> − 2s<sub>2</sub>, notch = u − 2s<sub>1</sub> + 2s<sub>2</sub></p>`,
     title: 'The Ladder Filter',
     subtitle: 'Subtractive synthesis',
     summary: [
@@ -89,6 +91,7 @@ const LEVELS = [
   },
   {
     n: 3,
+    math: `<p>Each envelope is an analog <b>RC</b> curve: every sample it moves a fixed fraction of the way to its target, which gives exponential curves like a capacitor charging.</p><p class="math">attack: v ← v + (1.3 − v)·c<sub>a</sub> until v = 1, &nbsp; c<sub>a</sub> = 1 − e<sup>−1.466 / (A·f<sub>s</sub>)</sup></p><p class="math">decay: v ← v + (S − v)·c<sub>d</sub>, &nbsp; release: v ← v − v·c<sub>r</sub>, &nbsp; c = 1 − e<sup>−4 / (time·f<sub>s</sub>)</sup></p><p class="math">out = v<sub>loudness</sub> · filter(x), &nbsp; f<sub>c</sub> = cutoff · 2<sup>amount · v<sub>filter</sub></sup></p>`,
     title: 'Contours (Envelopes)',
     subtitle: 'Shaping sound over time',
     summary: [
@@ -123,6 +126,7 @@ const LEVELS = [
   },
   {
     n: 4,
+    math: `<p>The mixer just adds the oscillators. Two close frequencies drift in and out of phase: the volume rises and falls at the difference frequency — the <b>beating</b>.</p><p class="math">mix = 0.6 · (L<sub>1</sub>·osc<sub>1</sub> + L<sub>2</sub>·osc<sub>2</sub> + L<sub>3</sub>·osc<sub>3</sub> + L<sub>n</sub>·noise), &nbsp; noise ∈ [−1, 1] random</p><p class="math">f<sub>2</sub> = f<sub>1</sub> · 2<sup>detune/12</sup>; &nbsp; beating = |f<sub>1</sub> − f<sub>2</sub>| &nbsp;(0.1 st at 220 Hz → 1.3 beats/s)</p><p class="math">fifth: 2<sup>7/12</sup> ≈ 1.498 ≈ 3/2</p>`,
     title: 'Three Oscillators',
     subtitle: 'The Minimoog mixer',
     summary: [
@@ -159,6 +163,7 @@ const LEVELS = [
   },
   {
     n: 5,
+    math: `<p>Modulation adds to the pitch (in semitones) or to the cutoff (in octaves), so a modulation always sounds the same size wherever you play. Glide is a one-pole low-pass on the note number.</p><p class="math">pitch = note + bend + lfo · depth<sub>pitch</sub> · mod, &nbsp; f = 440 · 2<sup>(pitch − 69)/12</sup></p><p class="math">f<sub>c</sub> = cutoff · 2<sup>env + lfo · depth<sub>filter</sub> · mod + track · (note − 60)/12</sup></p><p class="math">glide: n ← n + (target − n) · (1 − e<sup>−1/(0.3 · glide · f<sub>s</sub>)</sup>) &nbsp;(in semitones, per sample)</p><p class="math">LFO: φ ← φ + rate/f<sub>s</sub>; sine, triangle, square, saw, or a new random value each cycle (S&amp;H)</p>`,
     title: 'Modulation & Performance',
     subtitle: 'LFO, wheels, glide',
     summary: [
@@ -193,6 +198,7 @@ const LEVELS = [
   },
   {
     n: 6,
+    math: `<p>The full voice, computed sample by sample in an AudioWorklet. For the effects after the synth, open the <b>Pedals</b> tab and press “?” on any pedal.</p><p class="math">y = tanh(1.4 · VCA<sub>env</sub>(ladder(mixer(osc<sub>1</sub>, osc<sub>2</sub>, osc<sub>3</sub>, noise))) · volume) &nbsp;→ pedals</p><p class="math">every sample: oscillators → mixer → 2× ladder steps → envelopes → output, at f<sub>s</sub> = 44.1 or 48 kHz</p>`,
     title: 'Model D Sandbox',
     subtitle: 'Everything + presets',
     summary: [

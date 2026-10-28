@@ -46,6 +46,8 @@
           <div id="lesson-theory" class="theory"></div>
           <h2 data-i18n="tryThis">Try this</h2>
           <ul id="lesson-tips" class="tips"></ul>
+          <h2 data-i18n="howSimulated">How it's simulated</h2>
+          <div id="lesson-math" class="theory gp-math"></div>
         </details>
       </article>
       <section class="tasks card" aria-labelledby="tasks-title">
@@ -163,6 +165,15 @@
           </div>
           <p class="hint" data-i18n="gpKeysHint">Or play the keyboard below — chords work too.</p>
           <div class="gp-row">
+            <span class="gp-field" data-i18n="gpVoice">Keyboard &amp; riffs play</span>
+            <div class="gp-inst gp-voice" role="group" data-i18n-aria="gpVoice" aria-label="Keyboard & riffs play">
+              <button id="gp-voice-strings" type="button" data-i18n="gpVoiceStrings">Plucked strings</button>
+              <button id="gp-voice-moog" type="button" data-i18n="gpVoiceMoog">Moog synth</button>
+            </div>
+            <label id="gp-moog-row" class="gp-field" hidden><span data-i18n="gpMoogSound">Moog sound</span> <select id="gp-moog-sound"></select></label>
+          </div>
+          <p id="gp-moog-hint" class="hint" data-i18n="gpMoogHint" hidden></p>
+          <div class="gp-row">
             <button id="gp-mic" class="gp-mic" type="button">Use my instrument</button>
             <label class="gp-file"><input id="gp-file" type="file" accept="audio/*"><span data-i18n="gpFile">Play an audio file…</span></label>
             <button id="gp-file-stop" type="button" data-i18n="gpStopFile" hidden>Stop file</button>
@@ -195,9 +206,30 @@
         <div class="gp-chain">
           <div id="gp-pedals" class="gp-pedals"></div>
           <div class="gp-amp">
-            <div class="looper-head"><span id="gp-amp-name" class="pedal-name"></span></div>
+            <div class="looper-head"><span id="gp-amp-name" class="pedal-name"></span><button id="gp-amp-learn" type="button" class="gp-mini gp-q" data-i18n-title="gpLearnBtn" data-i18n-aria="gpLearnBtn">?</button></div>
             <p id="gp-amp-blurb" class="pedal-blurb"></p>
             <div id="gp-amp-knobs" class="pedal-knobs"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="gp-learn" class="card gp-learn" aria-labelledby="gp-learn-title" hidden>
+        <div class="gp-learn-head">
+          <h2 id="gp-learn-title"></h2>
+          <button id="gp-learn-close" type="button" data-i18n="gpClose">Close</button>
+        </div>
+        <div class="gp-learn-body">
+          <div class="gp-learn-text">
+            <h3 data-i18n="gpWhat">What it does</h3><p id="gp-learn-what"></p>
+            <h3 data-i18n="gpHow">How it works</h3><p id="gp-learn-how"></p>
+            <h3 data-i18n="gpMath">The maths</h3><div id="gp-learn-math" class="gp-math"></div>
+            <h3 data-i18n="gpListen">Listen for</h3><p id="gp-learn-listen"></p>
+          </div>
+          <div class="gp-learn-side">
+            <h3 data-i18n="gpDiagram">Signal path</h3>
+            <div id="gp-learn-diagram" class="gp-flow"></div>
+            <canvas id="gp-learn-plot" class="gp-learn-plot"></canvas>
+            <p id="gp-learn-caption" class="hint"></p>
           </div>
         </div>
       </section>
@@ -248,6 +280,7 @@
   <script src="js/guitar/catalog.js"></script>
   <script src="js/guitar/strings.js"></script>
   <script src="js/guitar/pitch.js"></script>
+  <script src="js/guitar/learn.js"></script>
   <script src="js/guitar/rig.js"></script>
   <script src="js/guitar/section.js"></script>
   <script src="js/app.js"></script>

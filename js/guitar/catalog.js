@@ -302,6 +302,12 @@ const GP_TEXT = {
     gpBoard: 'Pedalboard', gpPreset: 'Presets…', gpAdd: '+ Add a pedal…', gpOrder: 'Sort into classic order', gpClear: 'Remove all pedals',
     gpEmpty: 'No pedals yet — add one, or pick a preset.', gpMoveLeft: 'Move earlier in the chain', gpMoveRight: 'Move later in the chain', gpRemove: 'Remove {name}',
     gpIn: 'IN', gpAmpOut: 'AMP', gpOut: 'OUT', gpOrdered: 'Pedals sorted into the classic order', gpOutput: 'Output', gpOutputSub: 'after pedals and amp',
+    gpLearnBtn: 'How it works', gpLearnTitle: 'Inside the {name}', gpWhat: 'What it does', gpHow: 'How it works', gpMath: 'The maths (what this app computes)', gpListen: 'Listen for', gpDiagram: 'Signal path', gpClose: 'Close',
+    gpPlotTransfer: 'Clipping curve: input x → output y. Dashed line = no effect.', gpPlotResponse: 'Frequency response for the current settings (dB). Faint curves: where it moves.',
+    gpPlotCompressor: 'Input level → output level (dB). Dashed = no compression; T = threshold.', gpPlotOctave: 'The real algorithm on a 110 Hz note: input (grey) and the sub-octave (orange) — half as many cycles.',
+    gpPlotLfo: 'How the effect moves over time with the current Rate and Depth.', gpPlotImpulse: 'Impulse response: what comes out after a single click.',
+    gpVoice: 'Keyboard & riffs play', gpVoiceStrings: 'Plucked strings', gpVoiceMoog: 'Moog synth', gpMoogSound: 'Moog sound',
+    gpMoogHint: 'The Moog synth goes through your pedalboard instead of a guitar. Riffs play one note at a time (the synth is monophonic).',
   },
   fr: {
     modePedals: 'Pédales',
@@ -322,6 +328,12 @@ const GP_TEXT = {
     gpBoard: 'Pédalier', gpPreset: 'Presets…', gpAdd: '+ Ajouter une pédale…', gpOrder: 'Trier dans l\'ordre classique', gpClear: 'Retirer toutes les pédales',
     gpEmpty: 'Aucune pédale — ajoutez-en une ou choisissez un preset.', gpMoveLeft: 'Avancer dans la chaîne', gpMoveRight: 'Reculer dans la chaîne', gpRemove: 'Retirer {name}',
     gpIn: 'ENTRÉE', gpAmpOut: 'AMPLI', gpOut: 'SORTIE', gpOrdered: 'Pédales triées dans l\'ordre classique', gpOutput: 'Sortie', gpOutputSub: 'après pédales et ampli',
+    gpLearnBtn: 'Comment ça marche', gpLearnTitle: 'Dans la pédale {name}', gpWhat: 'Ce qu\'elle fait', gpHow: 'Comment ça marche', gpMath: 'Les maths (ce que calcule l\'appli)', gpListen: 'À écouter', gpDiagram: 'Chemin du signal', gpClose: 'Fermer',
+    gpPlotTransfer: 'Courbe d\'écrêtage : entrée x → sortie y. Pointillés = aucun effet.', gpPlotResponse: 'Réponse en fréquence pour les réglages actuels (dB). Courbes pâles : là où elle se déplace.',
+    gpPlotCompressor: 'Niveau d\'entrée → niveau de sortie (dB). Pointillés = pas de compression ; T = seuil.', gpPlotOctave: 'Le vrai algorithme sur une note à 110 Hz : entrée (gris) et octave inférieure (orange) — deux fois moins de cycles.',
+    gpPlotLfo: 'Comment l\'effet bouge dans le temps avec la vitesse et la profondeur actuelles.', gpPlotImpulse: 'Réponse impulsionnelle : ce qui sort après un seul clic.',
+    gpVoice: 'Le clavier et les riffs jouent', gpVoiceStrings: 'Cordes pincées', gpVoiceMoog: 'Synthé Moog', gpMoogSound: 'Son Moog',
+    gpMoogHint: 'Le synthé Moog passe dans votre pédalier à la place d\'une guitare. Les riffs jouent une note à la fois (le synthé est monophonique).',
   },
 };
 

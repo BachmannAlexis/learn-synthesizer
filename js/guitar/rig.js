@@ -277,9 +277,10 @@ function createGuitarRig(ctx) {
 
   // Riff player (scheduled ahead on the audio clock, so timing stays tight).
   const riff = { timer: null, data: null, kind: 'guitar', start: 0, schedTo: 0, srcs: [] };
-  function playRiff(data, kind) {
+  // `player(notes, time, duration)` can replace the plucked strings (e.g. the Moog synth).
+  function playRiff(data, kind, player = null) {
     stopRiff();
-    Object.assign(riff, { data, kind, start: ctx.currentTime + 0.08 });
+    Object.assign(riff, { data, kind, player, start: ctx.currentTime + 0.08 });
     riff.schedTo = riff.start;
     riff.timer = setInterval(tickRiff, 25);
     tickRiff();
@@ -293,6 +294,7 @@ function createGuitarRig(ctx) {
         const t = riff.start + k * loop + b * beat;
         if (t < riff.schedTo || t >= t1) continue;
         // A small spread between the strings of a chord, like a real strum.
+        if (riff.player) { riff.player.play(notes, t, len * beat); continue; }
         notes.forEach((n, i) => riff.srcs.push({ ...pluck(n, riff.kind, t + i * 0.008, len * beat), end: t + len * beat + 0.4 }));
       }
     }
@@ -301,6 +303,7 @@ function createGuitarRig(ctx) {
   }
   function stopRiff() {
     clearInterval(riff.timer); riff.timer = null;
+    if (riff.player) { riff.player.stop(); riff.player = null; }
     const t = ctx.currentTime;
     riff.srcs.forEach((s) => { try { s.g.gain.cancelScheduledValues(t); s.g.gain.setTargetAtTime(0, t, 0.02); s.src.stop(t + 0.2); } catch { /* not started yet */ } });
     riff.srcs = [];

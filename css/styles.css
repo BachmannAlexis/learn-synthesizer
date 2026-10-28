@@ -467,7 +467,25 @@ kbd {
 .gp-amp .knob { width: 60px; }
 .gp-amp .knob svg { width: 46px; height: 46px; }
 .gp-amp .choice-btns button { min-width: 0; padding: 4px 8px; }
+.gp-voice button { min-height: 32px; padding: 4px 12px; font-size: 13px; }
+.gp-q { font-weight: 700; }
+.gp-amp .looper-head { align-items: center; }
+.gp-pedal.learning, .gp-amp.learning { outline: 2px solid var(--trace); outline-offset: 3px; }
+.gp-learn { border-color: var(--trace); }
+.gp-learn-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+.gp-learn-head h2 { margin: 0; font: 700 22px/1.2 Georgia, serif; text-transform: none; letter-spacing: 0; color: var(--text); }
+.gp-learn-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; }
+.gp-learn h3 { margin: 12px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); }
+.gp-learn-text p { margin: 0; }
+.gp-math { display: flex; flex-direction: column; gap: 4px; }
+.math {
+  margin: 0; padding: 6px 10px; border-left: 3px solid var(--accent-dim); background: #0f0d0b; border-radius: 0 6px 6px 0;
+  font: italic 15px/1.5 "Cambria Math", "STIX Two Math", Cambria, Georgia, serif; color: #f6efe0; overflow-x: auto;
+}
+.math sub, .math sup { font-size: 0.72em; }
+.gp-learn-plot { display: block; width: 100%; height: 220px; margin-top: 10px; background: #0b0a09; border-radius: 6px; }
 @media (max-width: 980px) {
+  .gp-learn-body { grid-template-columns: minmax(0, 1fr); }
   .gp-intro, .gp-top, .gp-chain { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 560px) {

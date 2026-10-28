@@ -38,6 +38,7 @@
 
   // ---------- audio ----------
   let ctx = null, node = null, analyser = null, starting = null, board = null, looper = null, tickTimer = null;
+  let synthOut = null, synthDirect = null, synthRoutedTo = null; // the synth can feed the guitar pedalboard
   // Chromium honours a numeric latencyHint (0 = smallest buffer the device allows, several times
   // less delay than 'interactive'); other browsers get the standard low-latency setting.
   const isChromium = !!(navigator.userAgentData && navigator.userAgentData.brands.some((b) => /Chromium/.test(b.brand)));
@@ -86,7 +87,9 @@
       out.connect(analyser); // the scopes show the synth itself, before the pedals
       board = createPedalboard(ctx);
       out.connect(board.input);
-      board.output.connect(ctx.destination);
+      synthOut = out;
+      synthDirect = ctx.createGain();
+      board.output.connect(synthDirect).connect(ctx.destination);
       board.update(patch);
       looper = createLooper({
         now: () => ctx.currentTime,
@@ -173,8 +176,9 @@
     held.add(n);
     $$(`.key[data-note="${n}"]`).forEach((k) => k.classList.add('down'));
     $('#note-readout').textContent = noteName(n) + ' · ' + (440 * Math.pow(2, (n - 69) / 12)).toFixed(1) + ' Hz';
-    if (isPedals()) { sounding.add(n); GuitarSection.noteOn(n); return; }
+    if (isPedals() && !GuitarSection.usesSynth) { sounding.add(n); GuitarSection.noteOn(n); return; }
     await startAudio();
+    if (isPedals()) await GuitarSection.prepare(); // the Moog synth goes through the pedalboard
     if (!held.has(n)) return; // released while audio was starting
     if (sounding.has(n)) { send({ type: 'noteOff', note: n }); if (looper) looper.noteOff(n); }
     sounding.add(n);
@@ -189,7 +193,7 @@
   }
   function release(n) {
     if (!sounding.delete(n)) return;
-    if (isPedals()) { GuitarSection.noteOff(n); return; }
+    if (isPedals() && !GuitarSection.usesSynth) { GuitarSection.noteOff(n); return; }
     send({ type: 'noteOff', note: n });
     if (looper) looper.noteOff(n);
   }
@@ -473,6 +477,7 @@
     $('#lesson-summary').innerHTML = T.summary.map((x) => `<li>${x}</li>`).join('');
     $('#lesson-theory').innerHTML = T.theory;
     $('#lesson-tips').innerHTML = T.tips.map((x) => `<li>${x}</li>`).join('');
+    $('#lesson-math').innerHTML = T.math;
     renderChallenges();
     $('#prev-level').disabled = level === 1;
     $('#next-level').disabled = level === LEVELS.length;
@@ -513,7 +518,7 @@
   }
 
   function checkChallenges() {
-    if (isStudio() || demo.running) return; // the demo plays for you; stars are yours to earn
+    if (isStudio() || isPedals() || demo.running) return; // the demo plays for you; stars are yours to earn
     const L = LEVELS[level - 1];
     let gained = null;
     for (const c of L.challenges) {
@@ -1023,6 +1028,23 @@
     GuitarSection.init({
       startAudio, getCtx: () => ctx, makeKnob, makeChoice, toast,
       setOctave(n) { if (octave !== n) { allOff(); octave = n; buildKeyboard(); } },
+      allNotesOff: allOff,
+      // Send the raw synth into the pedalboard's input (and silence its own output), or back.
+      routeSynth(dest) {
+        if (!synthOut || synthRoutedTo === dest) return;
+        if (synthRoutedTo) { try { synthOut.disconnect(synthRoutedTo); } catch { /* not connected */ } }
+        synthRoutedTo = dest || null;
+        if (dest) synthOut.connect(dest);
+        synthDirect.gain.setTargetAtTime(dest ? 0 : 1, ctx.currentTime, 0.01);
+      },
+      setSynthSound(name) { patch = withFx({ ...defaultPatch(), ...PRESETS[name] }); sendParams(); },
+      // Riff notes on the synth's second voice, timed to the sample.
+      synthNoteAt(note, t, dur) {
+        const sr = ctx.sampleRate;
+        send({ type: 'noteOn', note, voice: 1, at: Math.round(t * sr) });
+        send({ type: 'noteOff', note, voice: 1, at: Math.round((t + dur) * sr) });
+      },
+      synthStop() { send({ type: 'clearQueue', voice: 1 }); send({ type: 'allOff', voice: 1 }); },
     });
     $('#lang-en').addEventListener('click', () => { I18N.set('en'); rebuild(); });
     $('#lang-fr').addEventListener('click', () => { I18N.set('fr'); rebuild(); });

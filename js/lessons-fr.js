@@ -1,6 +1,7 @@
 /* Leçons en français. Mêmes niveaux et mêmes identifiants de défis que lessons.js. */
 const LESSONS_FR = {
   1: {
+    math: `<p>Un oscillateur numérique garde une <b>phase</b> φ qui monte de 0 à 1 à chaque cycle ; chaque forme d'onde est une fonction simple de φ. Un saut brusque (scie, carré) contient des harmoniques au-dessus de la fréquence de Nyquist qui reviendraient comme du bruit : l'appli adoucit chaque saut avec <b>PolyBLEP</b>.</p><p class="math">φ[n+1] = (φ[n] + f/f<sub>s</sub>) mod 1, &nbsp; f = 440 · 2<sup>(note − 69)/12</sup> · 2<sup>range − 2</sup></p><p class="math">saw = 2φ − 1, &nbsp; square = sign(½ − φ), &nbsp; triangle = 1 − 4|φ − ½|, &nbsp; sine = sin 2πφ</p><p class="math">saw(t) = (2/π) Σ<sub>k≥1</sub> (−1)<sup>k+1</sup> sin(kωt)/k, &nbsp; square(t) = (4/π) Σ sin((2k−1)ωt)/(2k−1)</p><p class="math">PolyBLEP: near each jump (t &lt; Δ or t &gt; 1 − Δ, Δ = f/f<sub>s</sub>) subtract a small polynomial — it removes aliasing</p>`,
     title: 'L\'oscillateur',
     subtitle: 'Hauteur et timbre',
     summary: [
@@ -37,6 +38,7 @@ const LESSONS_FR = {
     },
   },
   2: {
+    math: `<p>Le ladder, ce sont quatre étages passe-bas d'un pôle en série, chacun avec la courbe <b>tanh</b> des transistors, et la sortie réinjectée à l'entrée. Il tourne deux fois par échantillon (suréchantillonnage) pour rester stable et propre aux coupures élevées.</p><p class="math">u = tanh(drive · x − k · s<sub>4</sub>), &nbsp; k = 4.2 · emphasis</p><p class="math">s<sub>i</sub> ← s<sub>i</sub> + g · (tanh s<sub>i−1</sub> − tanh s<sub>i</sub>), &nbsp; i = 1…4, &nbsp; g = 1 − e<sup>−2πf<sub>c</sub> / 2f<sub>s</sub></sup> &nbsp;(2× oversampled)</p><p class="math">H(s) = 1 / ((1 + s/ω<sub>c</sub>)⁴ + k) &nbsp;→ at k = 4 each stage turns 45°, the loop 180°: self-oscillation at ω<sub>c</sub></p><p class="math">types mix u and the stages: LP24 = s<sub>4</sub>, LP12 = s<sub>2</sub>, HP24 = u − 4s<sub>1</sub> + 6s<sub>2</sub> − 4s<sub>3</sub> + s<sub>4</sub>, BP = 2s<sub>1</sub> − 2s<sub>2</sub>, notch = u − 2s<sub>1</sub> + 2s<sub>2</sub></p>`,
     title: 'Le filtre ladder',
     subtitle: 'Synthèse soustractive',
     summary: [
@@ -77,6 +79,7 @@ const LESSONS_FR = {
     },
   },
   3: {
+    math: `<p>Chaque enveloppe est une courbe <b>RC</b> analogique : à chaque échantillon elle parcourt une fraction fixe du chemin vers sa cible, ce qui donne des courbes exponentielles comme un condensateur qui se charge.</p><p class="math">attack: v ← v + (1.3 − v)·c<sub>a</sub> until v = 1, &nbsp; c<sub>a</sub> = 1 − e<sup>−1.466 / (A·f<sub>s</sub>)</sup></p><p class="math">decay: v ← v + (S − v)·c<sub>d</sub>, &nbsp; release: v ← v − v·c<sub>r</sub>, &nbsp; c = 1 − e<sup>−4 / (time·f<sub>s</sub>)</sup></p><p class="math">out = v<sub>loudness</sub> · filter(x), &nbsp; f<sub>c</sub> = cutoff · 2<sup>amount · v<sub>filter</sub></sup></p>`,
     title: 'Les enveloppes',
     subtitle: 'Façonner le son dans le temps',
     summary: [
@@ -108,6 +111,7 @@ const LESSONS_FR = {
     },
   },
   4: {
+    math: `<p>Le mélangeur additionne simplement les oscillateurs. Deux fréquences proches se décalent et se recalent : le volume monte et descend à la fréquence de leur différence — le <b>battement</b>.</p><p class="math">mix = 0.6 · (L<sub>1</sub>·osc<sub>1</sub> + L<sub>2</sub>·osc<sub>2</sub> + L<sub>3</sub>·osc<sub>3</sub> + L<sub>n</sub>·noise), &nbsp; noise ∈ [−1, 1] random</p><p class="math">f<sub>2</sub> = f<sub>1</sub> · 2<sup>detune/12</sup>; &nbsp; beating = |f<sub>1</sub> − f<sub>2</sub>| &nbsp;(0.1 st at 220 Hz → 1.3 beats/s)</p><p class="math">fifth: 2<sup>7/12</sup> ≈ 1.498 ≈ 3/2</p>`,
     title: 'Trois oscillateurs',
     subtitle: 'Le mélangeur du Minimoog',
     summary: [
@@ -138,6 +142,7 @@ const LESSONS_FR = {
     },
   },
   5: {
+    math: `<p>La modulation s'ajoute à la hauteur (en demi-tons) ou à la coupure (en octaves) : une modulation sonne donc pareil partout sur le clavier. Le glissando est un passe-bas d'un pôle sur le numéro de note.</p><p class="math">pitch = note + bend + lfo · depth<sub>pitch</sub> · mod, &nbsp; f = 440 · 2<sup>(pitch − 69)/12</sup></p><p class="math">f<sub>c</sub> = cutoff · 2<sup>env + lfo · depth<sub>filter</sub> · mod + track · (note − 60)/12</sup></p><p class="math">glide: n ← n + (target − n) · (1 − e<sup>−1/(0.3 · glide · f<sub>s</sub>)</sup>) &nbsp;(in semitones, per sample)</p><p class="math">LFO: φ ← φ + rate/f<sub>s</sub>; sine, triangle, square, saw, or a new random value each cycle (S&amp;H)</p>`,
     title: 'Modulation et jeu',
     subtitle: 'LFO, molettes, glissando',
     summary: [
@@ -169,6 +174,7 @@ const LESSONS_FR = {
     },
   },
   6: {
+    math: `<p>La voix complète, calculée échantillon par échantillon dans un AudioWorklet. Pour les effets après le synthé, ouvrez l'onglet <b>Pédales</b> et appuyez sur « ? » sur une pédale.</p><p class="math">y = tanh(1.4 · VCA<sub>env</sub>(ladder(mixer(osc<sub>1</sub>, osc<sub>2</sub>, osc<sub>3</sub>, noise))) · volume) &nbsp;→ pedals</p><p class="math">every sample: oscillators → mixer → 2× ladder steps → envelopes → output, at f<sub>s</sub> = 44.1 or 48 kHz</p>`,
     title: 'Bac à sable Model D',
     subtitle: 'Tout le synthé + presets',
     summary: [

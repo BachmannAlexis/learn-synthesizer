@@ -14,7 +14,7 @@ const STRINGS = {
     progress: 'Overall progress', levels: 'Levels',
     levelKicker: 'Level {n} · {sub}', readLesson: 'Read the full lesson',
     demo: '▶ Demo · {s} s', demoTitle: 'Hear and watch it: the app plays and turns the knobs for you', demoStop: '■ Stop',
-    demoEnded: 'Demo finished — your own sound is back', demoLabel: 'Demo',
+    demoEnded: 'Demo finished — your own sound is back', demoLabel: 'Demo', howSimulated: 'How it\'s simulated (the maths)',
     foldAll: 'Fold all', unfoldAll: 'Unfold all', foldTitle: 'Show or hide this section', noPedals: 'No pedal on', tryThis: 'Try this', challenges: 'Challenges',
     hint: 'A challenge completes while a note is sounding, so you hear the result.',
     prev: '← Previous', next: 'Next level →', resetProgress: 'Reset progress', resetConfirm: 'Click again to erase all stars',
@@ -63,7 +63,7 @@ const STRINGS = {
     progress: 'Progression', levels: 'Niveaux',
     levelKicker: 'Niveau {n} · {sub}', readLesson: 'Lire la leçon complète',
     demo: '▶ Démo · {s} s', demoTitle: 'Écouter et regarder : l\'appli joue et tourne les boutons pour vous', demoStop: '■ Arrêter',
-    demoEnded: 'Démo terminée — votre son est revenu', demoLabel: 'Démo',
+    demoEnded: 'Démo terminée — votre son est revenu', demoLabel: 'Démo', howSimulated: 'Comment c\'est simulé (les maths)',
     foldAll: 'Tout replier', unfoldAll: 'Tout déplier', foldTitle: 'Afficher ou masquer cette section', noPedals: 'Aucune pédale', tryThis: 'À essayer', challenges: 'Défis',
     hint: 'Un défi se valide pendant qu\'une note sonne, pour que vous entendiez le résultat.',
     prev: '← Précédent', next: 'Niveau suivant →', resetProgress: 'Réinitialiser la progression', resetConfirm: 'Cliquez encore pour effacer toutes les étoiles',
@@ -160,8 +160,8 @@ const I18N = (() => {
     // Lesson fields in the current language (French text from lessons-fr.js when available).
     lesson(L) {
       const f = fr() && typeof LESSONS_FR !== 'undefined' && LESSONS_FR[L.n];
-      if (!f) return { title: L.title, subtitle: L.subtitle, summary: L.summary, theory: L.theory, tips: L.tips, challenge: (c) => c.text };
-      return { title: f.title, subtitle: f.subtitle, summary: f.summary, theory: f.theory, tips: f.tips, challenge: (c) => f.challenges[c.id] || c.text };
+      if (!f) return { title: L.title, subtitle: L.subtitle, summary: L.summary, theory: L.theory, tips: L.tips, math: L.math, challenge: (c) => c.text };
+      return { title: f.title, subtitle: f.subtitle, summary: f.summary, theory: f.theory, tips: f.tips, math: f.math, challenge: (c) => f.challenges[c.id] || c.text };
     },
     // Fill static markup: data-i18n (text), data-i18n-html, data-i18n-title, data-i18n-aria, data-i18n-placeholder.
     apply(root = document) {
