@@ -278,6 +278,7 @@ function formatValue(def, v) {
     case 'st': return (v > 0 ? '+' : '') + v.toFixed(2) + ' ' + tr('st', 'st');
     case 'oct': return v.toFixed(2) + ' oct';
     case 'x': return '×' + v.toFixed(2);
+    case 'db': return (v > 0 ? '+' : '') + v.toFixed(1) + ' dB';
     default: return v.toFixed(2);
   }
 }

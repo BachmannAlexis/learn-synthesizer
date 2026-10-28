@@ -153,7 +153,7 @@ const I18N = (() => {
       try { localStorage.setItem('mooglab.lang', JSON.stringify(lang)); } catch { /* storage unavailable */ }
     },
     t,
-    param: (def) => (fr() && NAMES_FR.params[def.id]) || def.label,
+    param: (def) => (def.labels && (def.labels[lang] || def.labels.en)) || (fr() && NAMES_FR.params[def.id]) || def.label,
     section: (sec) => (fr() && NAMES_FR.sections[sec.id]) || sec.title,
     pedal: (pd) => (fr() && NAMES_FR.pedals[pd.id]) || pd,
     option: (o) => (fr() && NAMES_FR.options[o]) || o,

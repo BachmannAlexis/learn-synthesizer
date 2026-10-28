@@ -14,8 +14,14 @@
   const fxOf = (p) => Object.fromEntries(PARAMS.filter((d) => d.fx).map((d) => [d.id, p[d.id]]));
   const synthOf = (p) => Object.fromEntries(Object.entries(p).filter(([k]) => !isFx(k)));
   // Two sections: 'learn' (levels, lessons, challenges) and 'studio' (every control, free play).
-  let mode = location.hash === '#studio' ? 'studio' : location.hash === '#learn' ? 'learn' : store.get('mode', 'learn');
+  // Three sections: 'learn' (levels, lessons, challenges), 'studio' (every synth control, free play)
+  // and 'pedals' (guitar & bass pedal simulator, js/guitar/).
+  const MODES = ['learn', 'studio', 'pedals'];
+  const modeFromHash = () => MODES.find((m) => location.hash === '#' + m);
+  let mode = modeFromHash() || store.get('mode', 'learn');
+  if (!MODES.includes(mode)) mode = 'learn';
   const isStudio = () => mode === 'studio';
+  const isPedals = () => mode === 'pedals';
   const vis = () => (isStudio() ? LEVELS.length : level); // highest level whose controls are shown
   const STUDIO_VIEW = { flow: ['vco3', 'mix', 'vcf', 'vca', 'env', 'lfo', 'out'], viz: ['scope', 'spectrum', 'filter', 'env'] };
   const view = () => (isStudio() ? STUDIO_VIEW : LEVELS[level - 1]);
@@ -167,6 +173,7 @@
     held.add(n);
     $$(`.key[data-note="${n}"]`).forEach((k) => k.classList.add('down'));
     $('#note-readout').textContent = noteName(n) + ' · ' + (440 * Math.pow(2, (n - 69) / 12)).toFixed(1) + ' Hz';
+    if (isPedals()) { sounding.add(n); GuitarSection.noteOn(n); return; }
     await startAudio();
     if (!held.has(n)) return; // released while audio was starting
     if (sounding.has(n)) { send({ type: 'noteOff', note: n }); if (looper) looper.noteOff(n); }
@@ -182,6 +189,7 @@
   }
   function release(n) {
     if (!sounding.delete(n)) return;
+    if (isPedals()) { GuitarSection.noteOff(n); return; }
     send({ type: 'noteOff', note: n });
     if (looper) looper.noteOff(n);
   }
@@ -199,7 +207,9 @@
   // ---------- controls ----------
   const controls = {}; // id -> update fn
 
-  function makeKnob(def) {
+  // Controls read/write through `io`, so other sections (the guitar pedals) can reuse them.
+  const synthIO = { get: (id) => patch[id], set: (id, v) => setParam(id, v), register: (id, fn) => { controls[id] = fn; } };
+  function makeKnob(def, io = synthIO) {
     const el = document.createElement('div');
     el.className = 'knob';
     el.innerHTML = `
@@ -218,23 +228,23 @@
     el.title = I18N.t('knobTitle');
     const fill = $('.knob-fill', el), ptr = $('.knob-pointer', el), val = $('.knob-value', el);
     const update = () => {
-      const n = toNorm(def, patch[def.id]);
+      const n = toNorm(def, io.get(def.id));
       const ang = -135 + 270 * n;
       fill.setAttribute('d', n > 0.001 ? arc(-135, ang) : '');
       ptr.setAttribute('transform', `rotate(${ang} 32 32)`);
-      val.textContent = formatValue(def, patch[def.id]);
+      val.textContent = formatValue(def, io.get(def.id));
       el.setAttribute('aria-valuetext', val.textContent);
     };
-    const setNorm = (n) => setParam(def.id, fromNorm(def, n));
+    const setNorm = (n) => io.set(def.id, fromNorm(def, n));
     const normDef = toNorm(def, def.def);
     let startX = 0, startY = 0, startN = 0, lastPointer = 'mouse';
     el.addEventListener('pointerdown', (e) => {
       if (e.target.closest('.knob-value, .knob-edit')) return; // the value opens the number editor instead
       lastPointer = e.pointerType;
       el.setPointerCapture(e.pointerId);
-      startX = e.clientX; startY = e.clientY; startN = toNorm(def, patch[def.id]);
+      startX = e.clientX; startY = e.clientY; startN = toNorm(def, io.get(def.id));
       el.classList.add('active');
-      showBubble(el, def);
+      showBubble(el, def, io);
       e.preventDefault();
     });
     el.addEventListener('pointermove', (e) => {
@@ -245,31 +255,31 @@
       // Light notch at the default value, so it is easy to find again.
       if (Math.abs(n - normDef) < 0.015 && Math.abs(startN - normDef) > 0.001) n = normDef;
       setNorm(n);
-      showBubble(el, def);
+      showBubble(el, def, io);
     });
     const end = () => { el.classList.remove('active'); hideBubble(); };
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
     // Double-click resets with a mouse; on touch screens a double tap is too easy to do by accident.
     el.addEventListener('dblclick', (e) => {
-      if (lastPointer === 'mouse' && !e.target.closest('.knob-value, .knob-edit')) setParam(def.id, def.def);
+      if (lastPointer === 'mouse' && !e.target.closest('.knob-value, .knob-edit')) io.set(def.id, def.def);
     });
-    val.addEventListener('click', () => editValue(el, def, val));
-    el.addEventListener('wheel', (e) => { e.preventDefault(); setNorm(toNorm(def, patch[def.id]) - Math.sign(e.deltaY) * (e.shiftKey ? 0.005 : 0.03)); }, { passive: false });
+    val.addEventListener('click', () => editValue(el, def, val, io));
+    el.addEventListener('wheel', (e) => { e.preventDefault(); setNorm(toNorm(def, io.get(def.id)) - Math.sign(e.deltaY) * (e.shiftKey ? 0.005 : 0.03)); }, { passive: false });
     el.addEventListener('keydown', (e) => {
       const step = e.shiftKey ? 0.005 : 0.03;
-      if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { setNorm(toNorm(def, patch[def.id]) + step); e.preventDefault(); e.stopPropagation(); }
-      if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { setNorm(toNorm(def, patch[def.id]) - step); e.preventDefault(); e.stopPropagation(); }
-      if (e.key === 'Enter' && e.target === el) { editValue(el, def, val); e.preventDefault(); }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { setNorm(toNorm(def, io.get(def.id)) + step); e.preventDefault(); e.stopPropagation(); }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { setNorm(toNorm(def, io.get(def.id)) - step); e.preventDefault(); e.stopPropagation(); }
+      if (e.key === 'Enter' && e.target === el) { editValue(el, def, val, io); e.preventDefault(); }
     });
-    controls[def.id] = update;
+    io.register(def.id, update);
     return el;
   }
 
   // Large readout above the knob while it is turned (a finger hides the small value).
-  function showBubble(el, def) {
+  function showBubble(el, def, io = synthIO) {
     const b = $('#knob-bubble');
-    b.innerHTML = `<small>${I18N.param(def)}</small>${formatValue(def, patch[def.id])}`;
+    b.innerHTML = `<small>${I18N.param(def)}</small>${formatValue(def, io.get(def.id))}`;
     const r = el.getBoundingClientRect();
     b.style.left = Math.min(window.innerWidth - 70, Math.max(70, r.left + r.width / 2)) + 'px';
     b.style.top = Math.max(8, r.top - 54) + 'px';
@@ -278,12 +288,12 @@
   function hideBubble() { $('#knob-bubble').hidden = true; }
 
   // Type an exact value: click/tap the number under a knob.
-  function editValue(el, def, val) {
+  function editValue(el, def, val, io = synthIO) {
     const input = document.createElement('input');
     input.type = 'text';
     input.inputMode = 'decimal';
     input.className = 'knob-edit';
-    input.value = formatValue(def, patch[def.id]).replace(/\s*(dt|st)$/, '');
+    input.value = formatValue(def, io.get(def.id)).replace(/\s*(dt|st)$/, '');
     input.setAttribute('aria-label', I18N.param(def));
     val.hidden = true;
     val.after(input);
@@ -294,9 +304,9 @@
       if (closed) return;
       closed = true;
       if (apply) {
-        const v = parseValue(def, input.value, patch[def.id]);
+        const v = parseValue(def, input.value, io.get(def.id));
         if (v === null) toast(I18N.t('badValue', { text: input.value }));
-        else setParam(def.id, v);
+        else io.set(def.id, v);
       }
       input.remove();
       val.hidden = false;
@@ -309,7 +319,7 @@
     input.addEventListener('blur', () => close(true));
   }
 
-  function makeChoice(def) {
+  function makeChoice(def, io = synthIO) {
     const el = document.createElement('div');
     el.className = 'choice';
     el.dataset.param = def.id;
@@ -322,11 +332,11 @@
       const icon = def.options === WAVES ? waveIcon(i) : def.icons ? `<svg viewBox="0 0 28 20" class="wave-ico" aria-hidden="true"><path d="${def.icons[i]}"/></svg>` : '';
       b.innerHTML = icon + `<span>${name}</span>`;
       b.title = name;
-      b.addEventListener('click', () => setParam(def.id, i));
+      b.addEventListener('click', () => io.set(def.id, i));
       $('.choice-btns', el).appendChild(b);
       return b;
     });
-    controls[def.id] = () => btns.forEach((b, i) => b.setAttribute('aria-pressed', patch[def.id] === i));
+    io.register(def.id, () => btns.forEach((b, i) => b.setAttribute('aria-pressed', io.get(def.id) === i)));
     return el;
   }
 
@@ -470,14 +480,17 @@
 
   // Which blocks, scopes and section chrome are visible for the current section/level.
   function buildView() {
-    const V = view(), studio = isStudio();
+    const V = view(), studio = isStudio(), pedals = isPedals();
     document.body.classList.toggle('mode-studio', studio);
-    $('#levels').hidden = studio;
-    $('.col-lesson').hidden = studio;
+    document.body.classList.toggle('mode-pedals', pedals);
+    $('#levels').hidden = studio || pedals;
+    $('.col-lesson').hidden = studio || pedals;
+    $('.col-synth').hidden = pedals;
+    $('#gp').hidden = !pedals;
     $('#studio-intro').hidden = !studio;
-    $('.progress').hidden = studio;
-    $('#mode-learn').setAttribute('aria-current', studio ? 'false' : 'page');
-    $('#mode-studio').setAttribute('aria-current', studio ? 'page' : 'false');
+    $('.progress').hidden = studio || pedals;
+    for (const m of MODES) $('#mode-' + m).setAttribute('aria-current', m === mode ? 'page' : 'false');
+    $('#perf').hidden = pedals || vis() < 5;
     $('#reset').textContent = I18N.t(studio ? 'initPatch' : 'resetPatch');
     $('#studio-tips').innerHTML = (STRINGS[I18N.lang].studioTips || STRINGS.en.studioTips).map((x) => `<li>${x}</li>`).join('');
     $$('#flow [data-block]').forEach((b) => b.classList.toggle('on', V.flow.includes(b.dataset.block) || (b.dataset.block === 'vco' && V.flow.includes('vco3'))));
@@ -542,17 +555,21 @@
   }
 
   function setMode(m, { scroll = true } = {}) {
-    if (m !== 'learn' && m !== 'studio') m = 'learn';
+    if (!MODES.includes(m)) m = 'learn';
     if (m !== mode) {
       stopDemo();
       allOff();
-      if (isStudio()) store.set('studio', synthOf(patch)); else levelPatches[level] = { ...patch };
+      if (isPedals()) GuitarSection.hide();
+      if (isStudio()) store.set('studio', synthOf(patch)); else if (mode === 'learn') levelPatches[level] = { ...patch };
       mode = m;
       store.set('mode', mode);
-      patch = withFx(isStudio() ? studioPatch() : levelPatches[level] || patchForLevel(level));
-      sendParams();
-      $('#mod-wheel').value = patch.modWheel;
+      if (!isPedals()) {
+        patch = withFx(isStudio() ? studioPatch() : levelPatches[level] || patchForLevel(level));
+        sendParams();
+        $('#mod-wheel').value = patch.modWheel;
+      }
     }
+    if (isPedals()) GuitarSection.show();
     if (location.hash !== '#' + mode) history.replaceState(null, '', '#' + mode);
     rebuild();
     if (scroll) window.scrollTo({ top: 0 });
@@ -571,6 +588,7 @@
     buildKeyboard();
     renderLatency();
     if (ctx) updatePower();
+    if (isPedals()) GuitarSection.render();
     $('#lang-en').setAttribute('aria-pressed', I18N.lang === 'en');
     $('#lang-fr').setAttribute('aria-pressed', I18N.lang === 'fr');
   }
@@ -902,8 +920,11 @@
       const code = e.code;
       if (code in QWERTY && e.key && e.key.length === 1) learnLabels((c) => (c === code ? e.key : null));
       if (code === 'KeyZ' || code === 'KeyX') { allOff(); octave = Math.min(7, Math.max(1, octave + (code === 'KeyX' ? 1 : -1))); buildKeyboard(); return; }
-      if (code === 'KeyR') { withLooper((l) => l.rec()); e.preventDefault(); return; }
-      if (code === 'Space' && !/BUTTON/.test(e.target.tagName)) { withLooper((l) => l.toggle()); e.preventDefault(); return; }
+      if (code === 'KeyR' && !isPedals()) { withLooper((l) => l.rec()); e.preventDefault(); return; }
+      if (code === 'Space' && !/BUTTON/.test(e.target.tagName)) {
+        if (isPedals()) GuitarSection.toggleRiff(); else withLooper((l) => l.toggle());
+        e.preventDefault(); return;
+      }
       if (code === 'ShiftRight') { setSustain(!sustain); return; } // right Shift toggles hold
       if (code in KEYMAP) { noteOn(12 * (octave + 1) + KEYMAP[code]); e.preventDefault(); }
     });
@@ -958,7 +979,8 @@
   }
 
   // ---------- render loop ----------
-  function frame() {
+  function frame(now) {
+    if (isPedals()) { GuitarSection.frame(now); requestAnimationFrame(frame); return; }
     const L = view();
     const sr = ctx ? ctx.sampleRate : 48000;
     if (L.viz.includes('scope')) Viz.scope($('#viz-scope'), analyser);
@@ -996,7 +1018,12 @@
     updateSummaries();
     $('#mode-learn').addEventListener('click', (e) => { e.preventDefault(); setMode('learn'); });
     $('#mode-studio').addEventListener('click', (e) => { e.preventDefault(); setMode('studio'); });
-    window.addEventListener('hashchange', () => setMode(location.hash === '#studio' ? 'studio' : 'learn'));
+    window.addEventListener('hashchange', () => setMode(modeFromHash() || 'learn'));
+    $('#mode-pedals').addEventListener('click', (e) => { e.preventDefault(); setMode('pedals'); });
+    GuitarSection.init({
+      startAudio, getCtx: () => ctx, makeKnob, makeChoice, toast,
+      setOctave(n) { if (octave !== n) { allOff(); octave = n; buildKeyboard(); } },
+    });
     $('#lang-en').addEventListener('click', () => { I18N.set('en'); rebuild(); });
     $('#lang-fr').addEventListener('click', () => { I18N.set('fr'); rebuild(); });
     $('#prev-level').addEventListener('click', () => goLevel(level - 1));

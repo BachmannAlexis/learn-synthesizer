@@ -272,8 +272,59 @@ function mooglabDSP() {
     }
   }
 
+  // ---------- Guitar/bass pedal helpers ----------
+  // Analog-style octave down (like classic octave pedals): isolate the fundamental with a
+  // low-pass, square it up with a Schmitt trigger, halve its frequency with a flip-flop, then
+  // give the square the playing's own loudness envelope and round it off.
+  class SubOctave {
+    constructor(sr) {
+      this.sr = sr;
+      this.lpA = 1 - Math.exp(-TAU * 320 / sr);    // fundamental isolation (two poles)
+      this.hpA = 1 - Math.exp(-TAU * 25 / sr);     // DC removal
+      this.outA = 1 - Math.exp(-TAU * 900 / sr);   // smooth the square
+      this.envAtt = 1 - Math.exp(-1 / (0.002 * sr));
+      this.envRel = 1 - Math.exp(-1 / (0.06 * sr));
+      this.l1 = this.l2 = this.dc = this.env = this.o = 0;
+      this.state = -1; this.flip = 1;
+    }
+    process(inp, out) {
+      for (let i = 0; i < inp.length; i++) {
+        const x = inp[i];
+        this.dc += this.hpA * (x - this.dc);
+        this.l1 += this.lpA * (x - this.dc - this.l1);
+        this.l2 += this.lpA * (this.l1 - this.l2);
+        const a = Math.abs(x);
+        this.env += (a > this.env ? this.envAtt : this.envRel) * (a - this.env);
+        const h = this.env * 0.15 + 1e-4; // hysteresis follows the level, so noise can't toggle it
+        if (this.state < 0 && this.l2 > h) { this.state = 1; this.flip = -this.flip; }
+        else if (this.state > 0 && this.l2 < -h) this.state = -1;
+        this.o += this.outA * (this.flip * this.env * 1.6 - this.o);
+        out[i] = this.o;
+      }
+    }
+  }
+
+  // Envelope follower: how hard you play, as a slowly moving signal (drives the envelope filter).
+  class EnvFollower {
+    constructor(sr) {
+      this.att = 1 - Math.exp(-1 / (0.004 * sr));
+      this.rel = 1 - Math.exp(-1 / (0.15 * sr));
+      this.env = 0;
+    }
+    process(inp, out) {
+      for (let i = 0; i < inp.length; i++) {
+        const a = Math.abs(inp[i]);
+        this.env += (a > this.env ? this.att : this.rel) * (a - this.env);
+        out[i] = Math.min(1, this.env * 4);
+      }
+    }
+  }
+
   // Exposed for the main-thread fallback and unit tests — harmless in the worklet scope.
-  if (typeof globalThis !== 'undefined') { globalThis.MooglabEngine = Engine; globalThis.MooglabRack = Rack; globalThis.MooglabFilterTaps = FILTER_TAPS; }
+  if (typeof globalThis !== 'undefined') {
+    globalThis.MooglabEngine = Engine; globalThis.MooglabRack = Rack; globalThis.MooglabFilterTaps = FILTER_TAPS;
+    globalThis.MooglabSubOctave = SubOctave; globalThis.MooglabEnvFollower = EnvFollower;
+  }
 
   if (typeof AudioWorkletProcessor !== 'undefined' && typeof registerProcessor === 'function') {
     class MoogProcessor extends AudioWorkletProcessor {
@@ -296,6 +347,18 @@ function mooglabDSP() {
       }
     }
     registerProcessor('moog-voice', MoogProcessor);
+
+    // One-input, one-output wrappers for the pedal helpers.
+    const wrap = (Cls) => class extends AudioWorkletProcessor {
+      constructor() { super(); this.dsp = new Cls(sampleRate); }
+      process(inputs, outputs) {
+        const inp = inputs[0][0], out = outputs[0][0];
+        if (inp) this.dsp.process(inp, out); else out.fill(0);
+        return true;
+      }
+    };
+    registerProcessor('gp-sub', wrap(SubOctave));
+    registerProcessor('gp-env', wrap(EnvFollower));
   }
 }
 

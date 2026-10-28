@@ -16,6 +16,7 @@
     <nav class="modes" data-i18n-aria="sections" aria-label="Sections">
       <a id="mode-learn" class="mode-tab" href="#learn" data-i18n="modeLearn">Learn</a>
       <a id="mode-studio" class="mode-tab" href="#studio" data-i18n="modeStudio">Studio</a>
+      <a id="mode-pedals" class="mode-tab" href="#pedals" data-i18n="modePedals">Pedals</a>
     </nav>
     <div class="progress" data-i18n-title="progress" title="Overall progress">
       <div id="overall" class="bar"><i></i></div>
@@ -136,6 +137,76 @@
         <figure class="viz" data-viz="env" data-fold="viz-env"><figcaption><button type="button" class="fold-btn" data-i18n-title="foldTitle"><span data-i18n="contours">Contours</span> <small data-i18n="contoursSub">ADSR over time</small><i class="chev" aria-hidden="true"></i></button></figcaption><div class="fold-body"><canvas id="viz-env"></canvas></div></figure>
       </div>
     </div>
+
+    <section id="gp" class="gp" aria-labelledby="gp-title" hidden>
+      <div class="gp-intro card">
+        <div>
+          <p class="kicker" data-i18n="gpKicker">Pedal simulator · guitar & bass</p>
+          <div class="title-row">
+            <h1 id="gp-title" data-i18n="gpTitle">Build your pedalboard</h1>
+            <div class="gp-inst" role="group" aria-label="Instrument">
+              <button id="gp-inst-guitar" type="button">Guitar</button>
+              <button id="gp-inst-bass" type="button">Bass</button>
+            </div>
+          </div>
+          <p class="studio-text" data-i18n="gpIntro"></p>
+        </div>
+        <ul id="gp-points" class="summary"></ul>
+      </div>
+
+      <div class="gp-top">
+        <section class="card gp-source" aria-labelledby="gp-source-title">
+          <h2 id="gp-source-title" data-i18n="gpSource">Sound source</h2>
+          <div class="gp-row">
+            <label class="gp-field"><span data-i18n="gpRiff">Demo riff</span> <select id="gp-riff"></select></label>
+            <button id="gp-riff-play" class="gp-play" type="button">▶ Play riff</button>
+          </div>
+          <p class="hint" data-i18n="gpKeysHint">Or play the keyboard below — chords work too.</p>
+          <div class="gp-row">
+            <button id="gp-mic" class="gp-mic" type="button">Use my instrument</button>
+            <label class="gp-file"><input id="gp-file" type="file" accept="audio/*"><span data-i18n="gpFile">Play an audio file…</span></label>
+            <button id="gp-file-stop" type="button" data-i18n="gpStopFile" hidden>Stop file</button>
+          </div>
+          <p id="gp-mic-note" class="gp-note" data-i18n="gpMicOn" hidden></p>
+          <div class="gp-row gp-inrow">
+            <div id="gp-in-knob"></div>
+            <div class="gp-meter-wrap"><span data-i18n="gpInput">Input</span><div id="gp-meter-in" class="gp-meter"><i></i></div></div>
+          </div>
+        </section>
+        <section id="gp-tuner" class="card gp-tuner" data-state="idle" aria-labelledby="gp-tuner-title">
+          <h2 id="gp-tuner-title" data-i18n="gpTuner">Tuner</h2>
+          <div id="gp-note" class="gp-note-big" aria-live="polite">—</div>
+          <div class="gp-scale" aria-hidden="true"><i class="gp-center"></i><i id="gp-needle" class="gp-needle"></i></div>
+          <p id="gp-hz" class="gp-hz"></p>
+          <p class="gp-strings-label"><span data-i18n="gpStrings">Open strings</span> <span id="gp-strings" class="gp-strings"></span></p>
+          <label class="check"><input id="gp-mute" type="checkbox"> <span data-i18n="gpMute">Mute while tuning</span></label>
+        </section>
+      </div>
+
+      <section class="board gp-board" aria-labelledby="gp-board-title">
+        <h2 id="gp-board-title" class="board-title"><span data-i18n="gpBoard">Pedalboard</span></h2>
+        <div class="gp-tools">
+          <select id="gp-preset" data-i18n-aria="gpPreset" aria-label="Presets"></select>
+          <select id="gp-add" data-i18n-aria="gpAdd" aria-label="Add a pedal"></select>
+          <button id="gp-order" type="button" data-i18n="gpOrder">Sort into classic order</button>
+          <button id="gp-clear" type="button" data-i18n="gpClear">Remove all pedals</button>
+        </div>
+        <div id="gp-flow" class="gp-flow" aria-label="Signal chain"></div>
+        <div class="gp-chain">
+          <div id="gp-pedals" class="gp-pedals"></div>
+          <div class="gp-amp">
+            <div class="looper-head"><span id="gp-amp-name" class="pedal-name"></span></div>
+            <p id="gp-amp-blurb" class="pedal-blurb"></p>
+            <div id="gp-amp-knobs" class="pedal-knobs"></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="viz-grid">
+        <figure class="viz"><figcaption><span data-i18n="gpOutput">Output</span> <small data-i18n="gpOutputSub">after pedals and amp</small></figcaption><canvas id="gp-scope"></canvas></figure>
+        <figure class="viz"><figcaption><span data-i18n="spectrum">Spectrum</span> <small data-i18n="spectrumSub">harmonics</small></figcaption><canvas id="gp-spectrum"></canvas></figure>
+      </div>
+    </section>
   </main>
 
   <footer class="keys-area">
@@ -174,6 +245,11 @@
   <script src="js/fx.js"></script>
   <script src="js/looper.js"></script>
   <script src="js/demos.js"></script>
+  <script src="js/guitar/catalog.js"></script>
+  <script src="js/guitar/strings.js"></script>
+  <script src="js/guitar/pitch.js"></script>
+  <script src="js/guitar/rig.js"></script>
+  <script src="js/guitar/section.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
