@@ -3,7 +3,7 @@
  * Every pedal is built from Web Audio nodes; the octaver and envelope filter use small
  * AudioWorklet helpers from dsp.js (with a ScriptProcessor fallback when worklets are blocked).
  */
-function createGuitarRig(ctx) {
+function createGuitarRig(ctx, destination = ctx.destination) {
   const T = 0.015;
   const at = (param, v) => param.setTargetAtTime(v, ctx.currentTime, T);
   const db = (d) => Math.pow(10, d / 20);
@@ -184,11 +184,18 @@ function createGuitarRig(ctx) {
     const fx = BUILD[type]();
     const input = ctx.createGain(), output = ctx.createGain(), dry = ctx.createGain(), wet = ctx.createGain();
     input.connect(dry).connect(output);
-    input.connect(fx.input); fx.output.connect(wet).connect(output);
+    fx.output.connect(wet).connect(output);
     wet.gain.value = 0;
+    // The effect is only fed while it is on: a bypassed pedal costs no processing.
+    let fed = false, timer = null;
+    const engage = (on) => {
+      clearTimeout(timer);
+      if (on && !fed) { input.connect(fx.input); fed = true; }
+      if (!on && fed) timer = setTimeout(() => { input.disconnect(fx.input); fed = false; }, 200);
+    };
     return {
       input, output,
-      update(p, on) { fx.update(p); at(dry.gain, on ? 0 : 1); at(wet.gain, on ? 1 : 0); },
+      update(p, on) { engage(on); fx.update(p); at(dry.gain, on ? 0 : 1); at(wet.gain, on ? 1 : 0); },
       dispose() { try { fx.stop && fx.stop(); } catch { /* already stopped */ } input.disconnect(); output.disconnect(); },
     };
   }
@@ -229,7 +236,7 @@ function createGuitarRig(ctx) {
   input.connect(analyserIn);
   amp.output.connect(limitIn).connect(limiter).connect(out);
   out.connect(analyserOut);
-  out.connect(ctx.destination);
+  out.connect(destination);
 
   let pedals = []; // [{ uid, node }]
   function setChain(chain) {

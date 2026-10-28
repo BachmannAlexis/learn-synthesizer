@@ -39,9 +39,13 @@
   // ---------- audio ----------
   let ctx = null, node = null, analyser = null, starting = null, board = null, looper = null, tickTimer = null;
   let synthOut = null, synthDirect = null, synthRoutedTo = null; // the synth can feed the guitar pedalboard
+  let masterOut = null, lastDraw = 0;
   // Chromium honours a numeric latencyHint (0 = smallest buffer the device allows, several times
   // less delay than 'interactive'); other browsers get the standard low-latency setting.
   const isChromium = !!(navigator.userAgentData && navigator.userAgentData.brands.some((b) => /Chromium/.test(b.brand)));
+  // Phones: slower CPUs and small speakers. Use safer audio buffers, lighter drawing and a
+  // little output headroom so the sound doesn't crackle or overload the speaker.
+  const isPhone = (navigator.userAgentData && navigator.userAgentData.mobile) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.matchMedia('(pointer: coarse)').matches;
   function makeContext(hint) {
     const AC = window.AudioContext || window.webkitAudioContext;
     try { return new AC({ latencyHint: hint }); } catch { return new AC(); }
@@ -65,7 +69,7 @@
       if (hint !== 'interactive') { c.close(); ctx = null; starting = null; startAudio('interactive'); }
     }, 700);
   }
-  function startAudio(hint = isChromium ? 0 : 'interactive') {
+  function startAudio(hint = isChromium && !isPhone ? 0 : 'interactive') {
     wake();
     if (starting) return starting;
     // iPhone: play through the ringer/silent switch like a music app.
@@ -89,7 +93,10 @@
       out.connect(board.input);
       synthOut = out;
       synthDirect = ctx.createGain();
-      board.output.connect(synthDirect).connect(ctx.destination);
+      masterOut = ctx.createGain();
+      masterOut.gain.value = isPhone ? 0.8 : 1; // −2 dB headroom for phone speakers
+      masterOut.connect(ctx.destination);
+      board.output.connect(synthDirect).connect(masterOut);
       board.update(patch);
       looper = createLooper({
         now: () => ctx.currentTime,
@@ -125,7 +132,7 @@
     return w;
   }
   // Main-thread fallback buffer: 512 samples (~11 ms) is low delay without starving on busy devices.
-  const FALLBACK_BUFFER = 512;
+  const FALLBACK_BUFFER = isPhone ? 1024 : 512;
   function scriptNode() {
     mooglabDSP();
     const rack = new globalThis.MooglabRack(ctx.sampleRate);
@@ -985,6 +992,9 @@
 
   // ---------- render loop ----------
   function frame(now) {
+    // Phones redraw the scopes at ~30 fps to leave the processor to the audio.
+    if (isPhone && now - lastDraw < 32) { requestAnimationFrame(frame); return; }
+    lastDraw = now;
     if (isPedals()) { GuitarSection.frame(now); requestAnimationFrame(frame); return; }
     const L = view();
     const sr = ctx ? ctx.sampleRate : 48000;
@@ -1026,7 +1036,7 @@
     window.addEventListener('hashchange', () => setMode(modeFromHash() || 'learn'));
     $('#mode-pedals').addEventListener('click', (e) => { e.preventDefault(); setMode('pedals'); });
     GuitarSection.init({
-      startAudio, getCtx: () => ctx, makeKnob, makeChoice, toast,
+      startAudio, getCtx: () => ctx, getOutput: () => masterOut, makeKnob, makeChoice, toast,
       setOctave(n) { if (octave !== n) { allOff(); octave = n; buildKeyboard(); } },
       allNotesOff: allOff,
       // Send the raw synth into the pedalboard's input (and silence its own output), or back.

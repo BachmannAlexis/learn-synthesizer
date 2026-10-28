@@ -5,6 +5,12 @@ const Viz = (() => {
   const tr = (k, vars) => I18N.t(k, vars);
   const css = (name) => cssCache[name] || (cssCache[name] = getComputedStyle(document.documentElement).getPropertyValue(name).trim());
 
+  // Skip drawing scopes that are scrolled out of view (saves processor time, mostly on phones).
+  function onScreen(canvas) {
+    const r = canvas.getBoundingClientRect();
+    return r.width > 0 && r.bottom > 0 && r.top < window.innerHeight;
+  }
+
   function setup(canvas) {
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -43,6 +49,7 @@ const Viz = (() => {
 
   const timeBuf = new Float32Array(4096);
   function scope(canvas, analyser) {
+    if (!onScreen(canvas)) return;
     const { g, w, h } = setup(canvas);
     grid(g, w, h, [w / 4, w / 2, 3 * w / 4], [h / 4, h / 2, 3 * h / 4]);
     if (!analyser) return idle(g, w, h);
@@ -70,6 +77,7 @@ const Viz = (() => {
 
   let freqBuf = null;
   function spectrum(canvas, analyser, sampleRate) {
+    if (!onScreen(canvas)) return;
     const { g, w, h } = setup(canvas);
     const dbMin = -100, dbMax = -10;
     const dy = (db) => h - ((db - dbMin) / (dbMax - dbMin)) * h;
@@ -120,6 +128,7 @@ const Viz = (() => {
   const SLOPES = ['−24 dB/oct', '−12 dB/oct', '+24 dB/oct', '+12 dB/oct', '±6 dB/oct', ''];
 
   function filter(canvas, p, liveFc) {
+    if (!onScreen(canvas)) return;
     const { g, w, h } = setup(canvas);
     const dbMin = -60, dbMax = 24;
     const dy = (db) => h - ((db - dbMin) / (dbMax - dbMin)) * h;
@@ -152,6 +161,7 @@ const Viz = (() => {
 
   // Contours: drawn for a 1.2 s key-hold, plus the release.
   function envelopes(canvas, p, tele) {
+    if (!onScreen(canvas)) return;
     const { g, w, h } = setup(canvas);
     grid(g, w, h, [], [h * 0.1, h * 0.55]);
     const hold = 1.2;

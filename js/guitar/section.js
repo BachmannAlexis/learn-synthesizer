@@ -44,7 +44,7 @@ const GuitarSection = (() => {
     await api.startAudio();
     const ctx = api.getCtx();
     if (!ctx) return null;
-    rig = createGuitarRig(ctx);
+    rig = createGuitarRig(ctx, api.getOutput() || ctx.destination);
     rig.setInputGain(state.inputGain);
     applyBoard();
     routeVoice();

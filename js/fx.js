@@ -7,12 +7,19 @@ function createPedalboard(ctx) {
   const T = 0.02; // smoothing time constant (s)
   const set = (param, v) => param.setTargetAtTime(v, ctx.currentTime, T);
 
+  // `feed` is the effect's own input. It is only connected while the pedal is on, so a
+  // switched-off effect (especially the reverb) costs no processing — important on phones.
   function pedal() {
-    const input = ctx.createGain(), output = ctx.createGain(), dry = ctx.createGain(), wet = ctx.createGain();
+    const input = ctx.createGain(), output = ctx.createGain(), dry = ctx.createGain(), wet = ctx.createGain(), feed = ctx.createGain();
     input.connect(dry).connect(output);
     wet.connect(output);
     wet.gain.value = 0;
-    return { input, output, dry, wet };
+    return { input, output, dry, wet, feed, fed: false, timer: null };
+  }
+  function engage(pd, on) {
+    clearTimeout(pd.timer);
+    if (on && !pd.fed) { pd.input.connect(pd.feed); pd.fed = true; }
+    if (!on && pd.fed) pd.timer = setTimeout(() => { pd.input.disconnect(pd.feed); pd.fed = false; }, 200); // after the fade
   }
 
   // --- Overdrive: gain -> tanh clipper -> tone filter -> level
@@ -26,7 +33,7 @@ function createPedalboard(ctx) {
   const driveTone = ctx.createBiquadFilter();
   driveTone.type = 'lowpass';
   const driveLevel = ctx.createGain();
-  drive.input.connect(pre).connect(shaper).connect(driveTone).connect(driveLevel).connect(drive.wet);
+  drive.feed.connect(pre).connect(shaper).connect(driveTone).connect(driveLevel).connect(drive.wet);
 
   // --- Chorus: two modulated short delays panned left and right
   const chorus = pedal();
@@ -40,7 +47,7 @@ function createPedalboard(ctx) {
     if (pan > 0) { depth.inv = true; }
     const p = ctx.createStereoPanner();
     p.pan.value = pan * 0.8;
-    chorus.input.connect(d).connect(p).connect(chorus.wet);
+    chorus.feed.connect(d).connect(p).connect(chorus.wet);
     return depth;
   });
 
@@ -51,7 +58,7 @@ function createPedalboard(ctx) {
   const echoTone = ctx.createBiquadFilter();
   echoTone.type = 'lowpass';
   echoTone.frequency.value = 4500;
-  echo.input.connect(delay).connect(echoTone).connect(feedback).connect(delay);
+  echo.feed.connect(delay).connect(echoTone).connect(feedback).connect(delay);
   echoTone.connect(echo.wet);
 
   // --- Reverb: convolution with a generated, exponentially decaying noise burst
@@ -59,7 +66,7 @@ function createPedalboard(ctx) {
   const conv = ctx.createConvolver();
   const revTone = ctx.createBiquadFilter();
   revTone.type = 'lowpass';
-  reverb.input.connect(conv).connect(revTone).connect(reverb.wet);
+  reverb.feed.connect(conv).connect(revTone).connect(reverb.wet);
   let irSize = 0;
   function buildIR(seconds) {
     const len = Math.max(1, Math.floor(seconds * ctx.sampleRate));
@@ -90,6 +97,7 @@ function createPedalboard(ctx) {
   reverb.output.connect(limitIn);
 
   function update(p) {
+    engage(drive, !!p.fxDriveOn); engage(chorus, !!p.fxChorusOn); engage(echo, !!p.fxDelayOn); engage(reverb, !!p.fxReverbOn);
     // Overdrive replaces the dry signal; the others add their wet signal on top.
     set(drive.dry.gain, p.fxDriveOn ? 0 : 1);
     set(drive.wet.gain, p.fxDriveOn ? 1 : 0);

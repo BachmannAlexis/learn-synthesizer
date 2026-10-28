@@ -12,6 +12,17 @@
 function mooglabDSP() {
   const TAU = Math.PI * 2;
 
+  // tanh via a [7/6] Padé approximant on |x| ≤ 5: within 0.0002 of Math.tanh, smooth everywhere,
+  // and about twice as fast — this runs ~20 times per sample, so it matters on phones.
+  function tanh(x) {
+    if (x > 5) x = 5; else if (x < -5) x = -5;
+    const x2 = x * x;
+    return x * (135135 + x2 * (17325 + x2 * (378 + x2))) / (135135 + x2 * (62370 + x2 * (3150 + x2 * 28)));
+  }
+  // Pitch, cutoff and the LFO are updated every CR samples (0.17 ms at 48 kHz): inaudible,
+  // and it saves several exp/pow calls per sample.
+  const CR = 8;
+
   // PolyBLEP: removes the aliasing of hard edges in saw / pulse waves.
   function blep(t, dt) {
     if (t < dt) { t /= dt; return t + t - t * t - 1; }
@@ -89,16 +100,16 @@ function mooglabDSP() {
   // global negative feedback (resonance / "emphasis"), run 2x oversampled.
   class Ladder {
     constructor(sr) { this.fsOS = sr * 2; this.s1 = this.s2 = this.s3 = this.s4 = 0; this.xPrev = 0; this.u = 0; }
-    process(x, fc, k, drive, taps = FILTER_TAPS[0]) {
-      const g = 1 - Math.exp(-TAU * fc / this.fsOS);
+    coef(fc) { return 1 - Math.exp(-TAU * fc / this.fsOS); }
+    process(x, g, k, drive, taps = FILTER_TAPS[0]) {
       const sat = taps[0] === 0; // low-pass mixes don't use the input tap
       let u = 0;
       for (let i = 0; i < 2; i++) {
         const inp = i === 0 ? 0.5 * (x + this.xPrev) : x;
-        u = Math.tanh(drive * inp - k * this.s4);
+        u = tanh(drive * inp - k * this.s4);
         if (sat) {
           // Low-pass: the saturating transistor stages of the original ladder.
-          const t1 = Math.tanh(this.s1), t2 = Math.tanh(this.s2), t3 = Math.tanh(this.s3), t4 = Math.tanh(this.s4);
+          const t1 = tanh(this.s1), t2 = tanh(this.s2), t3 = tanh(this.s3), t4 = tanh(this.s4);
           this.s1 += g * (u - t1);
           this.s2 += g * (t1 - t2);
           this.s3 += g * (t2 - t3);
@@ -175,47 +186,45 @@ function mooglabDSP() {
       const nyq = Math.min(20000, sr * 0.45);
       if (this.cur === null) this.cur = this.target;
 
-      for (let i = 0; i < n; i++) {
-        // LFO
-        this.lfoPhase += lfoInc;
-        if (this.lfoPhase >= 1) { this.lfoPhase -= 1; this.sh = Math.random() * 2 - 1; }
+      const mul = [Math.pow(2, tune[0]), Math.pow(2, tune[1]), Math.pow(2, tune[2])];
+      const glideK = glideCoef === 1 ? 1 : 1 - Math.pow(1 - glideCoef, CR);
+      const dt = [0, 0, 0];
+      let fc = this.fc, lfo = 0;
+
+      for (let i0 = 0; i0 < n; i0 += CR) {
+        const m = Math.min(CR, n - i0);
+        // ----- control rate: LFO, glide, pitch, cutoff -----
+        this.lfoPhase += lfoInc * m;
+        while (this.lfoPhase >= 1) { this.lfoPhase -= 1; this.sh = Math.random() * 2 - 1; }
         const ph = this.lfoPhase;
-        let lfo;
         if (lfoWave === 0) lfo = Math.sin(TAU * ph);
         else if (lfoWave === 1) lfo = 1 - 4 * Math.abs(ph - 0.5);
         else if (lfoWave === 2) lfo = ph < 0.5 ? 1 : -1;
         else if (lfoWave === 3) lfo = 1 - 2 * ph;
         else lfo = this.sh;
 
-        // Pitch (with glide / portamento)
-        this.cur += (this.target - this.cur) * glideCoef;
+        this.cur += (this.target - this.cur) * glideK;
         const pitch = this.cur + this.bend + lfo * lfoPitch;
         const base = 440 * Math.pow(2, (pitch - 69) / 12);
+        for (let o = 0; o < 3; o++) dt[o] = Math.min(base * mul[o] / sr, 0.49);
 
-        // Oscillators + noise into the mixer
-        let mix = 0;
-        for (let o = 0; o < 3; o++) {
-          if (lv[o] <= 0) continue;
-          const f = base * Math.pow(2, tune[o]);
-          mix += this.osc[o].next(wv[o], Math.min(f / sr, 0.49)) * lv[o];
-        }
-        if (p.noiseLevel > 0) mix += (Math.random() * 2 - 1) * p.noiseLevel;
-        mix = mix * 0.6 + (Math.random() - 0.5) * 2e-3; // tiny analog noise floor seeds self-oscillation
-
-        // Filter with contour, LFO and keyboard tracking
-        const ef = this.envF.next();
-        const octs = p.filterEnvAmt * ef + lfo * lfoFilter + p.keyTrack * (this.cur - 60) / 12;
-        let fc = p.cutoff * Math.pow(2, octs);
+        const octs = p.filterEnvAmt * this.envF.v + lfo * lfoFilter + p.keyTrack * (this.cur - 60) / 12;
+        fc = p.cutoff * Math.pow(2, octs);
         fc = fc < 20 ? 20 : fc > nyq ? nyq : fc;
-        const y = this.filter.process(mix, fc, k, p.drive, taps) * comp;
+        const g = this.filter.coef(fc);
 
-        // VCA
-        const ea = this.envA.next();
-        const s = y * ea * p.master;
-        out[i] = Math.tanh(s * 1.4);
-
-        if (i === n - 1) { this.fc = fc; this.lfo = lfo; }
+        // ----- audio rate -----
+        for (let i = i0; i < i0 + m; i++) {
+          let mix = 0;
+          for (let o = 0; o < 3; o++) if (lv[o] > 0) mix += this.osc[o].next(wv[o], dt[o]) * lv[o];
+          if (p.noiseLevel > 0) mix += (Math.random() * 2 - 1) * p.noiseLevel;
+          mix = mix * 0.6 + (Math.random() - 0.5) * 2e-3; // tiny analog noise floor seeds self-oscillation
+          this.envF.next();
+          const y = this.filter.process(mix, g, k, p.drive, taps) * comp;
+          out[i] = tanh(y * this.envA.next() * p.master * 1.4);
+        }
       }
+      this.fc = fc; this.lfo = lfo;
     }
   }
 
