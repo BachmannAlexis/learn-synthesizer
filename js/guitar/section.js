@@ -200,12 +200,28 @@ const GuitarSection = (() => {
     renderFlow();
   }
 
+  // The chain chips are buttons: they pick what the "before & after" view compares.
   function renderFlow() {
-    const chips = [`<span class="gp-chip io">${t('gpIn')}</span>`]
-      .concat(board().chain.map((p) => `<span class="gp-chip${p.on ? '' : ' off'}" style="--body:${GP_PEDALS[p.type].color}">${L(GP_PEDALS[p.type].name)}</span>`))
-      .concat([`<span class="gp-chip io">${t('gpAmpOut')}</span>`, `<span class="gp-chip io">${t('gpOut')}</span>`]);
+    if (compare.target !== 'all' && compare.target !== 'amp' && !board().chain.some((p) => p.uid === compare.target)) compare.target = 'all';
+    const chip = (target, cls, text, style = '') => {
+      const on = compare.target === target || (target === 'all' && compare.target === 'all');
+      return `<button type="button" class="gp-chip ${cls}" data-cmp="${target}" aria-pressed="${on}" title="${t('gpPickChip', { name: text })}" ${style}>${text}</button>`;
+    };
+    const chips = [chip('all', 'io', t('gpIn'))]
+      .concat(board().chain.map((p) => chip(p.uid, p.on ? '' : 'off', L(GP_PEDALS[p.type].name), `style="--body:${GP_PEDALS[p.type].color}"`)))
+      .concat([chip('amp', 'io', t('gpAmpOut')), chip('all', 'io', t('gpOut'))]);
     $('#gp-flow').innerHTML = chips.join('<i aria-hidden="true">→</i>');
+    renderCompareTitle();
   }
+  const compare = { target: 'all' };
+  function compareName() {
+    if (compare.target === 'all') return t('gpWhole');
+    if (compare.target === 'amp') return L(GP_AMP.name);
+    const p = board().chain.find((x) => x.uid === compare.target);
+    return p ? L(GP_PEDALS[p.type].name) + (p.on ? '' : ' ' + t('gpBypassed')) : t('gpWhole');
+  }
+  function renderCompareTitle() { $('#gp-compare-what').textContent = t('gpComparing', { what: compareName() }); }
+  function setCompare(target) { compare.target = target; renderFlow(); }
 
   function structureChanged() { save(); if (rig) rig.setChain(board().chain); renderBoard(); }
 
@@ -232,6 +248,7 @@ const GuitarSection = (() => {
     $('#gp-learn-caption').textContent = t(cap);
     document.querySelectorAll('.gp-pedal, .gp-amp').forEach((e) => e.classList.toggle('learning', e.dataset.uid === target || (target === 'amp' && e.classList.contains('gp-amp'))));
     drawLearn();
+    setCompare(target); // the before & after view follows the pedal being studied
   }
   function drawLearn() {
     const s = learnSubject();
@@ -292,11 +309,12 @@ const GuitarSection = (() => {
     if (rig) {
       updateTuner(now);
       meter(rig.analyserIn, $('#gp-meter-in'));
-      Viz.scope($('#gp-scope'), rig.analyserOut);
-      Viz.spectrum($('#gp-spectrum'), rig.analyserOut, api.getCtx().sampleRate);
-    } else {
-      Viz.scope($('#gp-scope'), null);
-      Viz.spectrum($('#gp-spectrum'), null, 48000);
+    }
+    const [A, B] = rig ? rig.taps(compare.target) : [null, null];
+    const lv = GPCompare.draw({ wave: $('#gp-cmp-wave'), spec: $('#gp-cmp-spec'), diff: $('#gp-cmp-diff') }, A, B, rig ? api.getCtx().sampleRate : 48000, compare.target);
+    if (now - (frame.lastLv || 0) > 250) {
+      frame.lastLv = now;
+      $('#gp-levels').textContent = lv ? t('gpLevels', { a: lv.before.toFixed(1), b: lv.after.toFixed(1), d: (lv.after - lv.before >= 0 ? '+' : '') + (lv.after - lv.before).toFixed(1) }) : '';
     }
   }
 
@@ -357,6 +375,7 @@ const GuitarSection = (() => {
     $('#gp-mute').addEventListener('change', (e) => { state.mute = e.target.checked; save(); if (rig) rig.setMuted(state.mute && tuner.reading); });
     $('#gp-amp-learn').addEventListener('click', () => { openLearn('amp'); $('#gp-learn').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
     $('#gp-learn-close').addEventListener('click', closeLearn);
+    $('#gp-flow').addEventListener('click', (e) => { const c = e.target.closest('[data-cmp]'); if (c) setCompare(c.dataset.cmp); });
     for (const v of ['strings', 'moog']) {
       $('#gp-voice-' + v).addEventListener('click', async () => {
         if (state.voice === v) return;

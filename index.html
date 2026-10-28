@@ -234,10 +234,20 @@
         </div>
       </section>
 
-      <div class="viz-grid">
-        <figure class="viz"><figcaption><span data-i18n="gpOutput">Output</span> <small data-i18n="gpOutputSub">after pedals and amp</small></figcaption><canvas id="gp-scope"></canvas></figure>
-        <figure class="viz"><figcaption><span data-i18n="spectrum">Spectrum</span> <small data-i18n="spectrumSub">harmonics</small></figcaption><canvas id="gp-spectrum"></canvas></figure>
-      </div>
+      <section class="card gp-compare" aria-labelledby="gp-compare-title">
+        <div class="gp-compare-head">
+          <h2 id="gp-compare-title" data-i18n="gpCompare">Before &amp; after</h2>
+          <p id="gp-compare-what" class="gp-compare-what"></p>
+          <p id="gp-levels" class="gp-levels"></p>
+        </div>
+        <p class="hint" data-i18n="gpCompareHint"></p>
+        <div class="gp-legend"><span class="before" data-i18n="gpBefore">before</span><span class="after" data-i18n="gpAfter">after</span></div>
+        <div class="viz-grid gp-compare-grid">
+          <figure class="viz"><figcaption><span data-i18n="gpWave">Waveform</span> <small data-i18n="gpWaveSub">shape over time</small></figcaption><canvas id="gp-cmp-wave"></canvas></figure>
+          <figure class="viz"><figcaption><span data-i18n="spectrum">Spectrum</span> <small data-i18n="spectrumSub">harmonics</small></figcaption><canvas id="gp-cmp-spec"></canvas></figure>
+          <figure class="viz"><figcaption><span data-i18n="gpChange">What changed</span> <small data-i18n="gpChangeSub">after − before, per frequency</small></figcaption><canvas id="gp-cmp-diff"></canvas></figure>
+        </div>
+      </section>
     </section>
   </main>
 
@@ -282,6 +292,7 @@
   <script src="js/guitar/pitch.js"></script>
   <script src="js/guitar/learn.js"></script>
   <script src="js/guitar/rig.js"></script>
+  <script src="js/guitar/compare.js"></script>
   <script src="js/guitar/section.js"></script>
   <script src="js/app.js"></script>
 </body>

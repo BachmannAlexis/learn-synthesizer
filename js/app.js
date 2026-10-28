@@ -507,7 +507,7 @@
     $('#studio-tips').innerHTML = (STRINGS[I18N.lang].studioTips || STRINGS.en.studioTips).map((x) => `<li>${x}</li>`).join('');
     $$('#flow [data-block]').forEach((b) => b.classList.toggle('on', V.flow.includes(b.dataset.block) || (b.dataset.block === 'vco' && V.flow.includes('vco3'))));
     $('#flow [data-block="vco"] b').textContent = V.flow.includes('vco3') ? 'VCO ×3' : 'VCO';
-    $$('.viz').forEach((v) => (v.hidden = !V.viz.includes(v.dataset.viz)));
+    $$('.col-synth .viz').forEach((v) => (v.hidden = !V.viz.includes(v.dataset.viz)));
     if (!studio) buildLesson();
     renderDemoButtons();
   }

@@ -238,13 +238,18 @@ function createGuitarRig(ctx, destination = ctx.destination) {
   out.connect(analyserOut);
   out.connect(destination);
 
-  let pedals = []; // [{ uid, node }]
+  // Listening points for the "before & after" view: the input, after every pedal, the output.
+  const mkTap = () => { const a = ctx.createAnalyser(); a.fftSize = 4096; a.smoothingTimeConstant = 0.7; return a; };
+  const tapIn = mkTap(), tapOut = mkTap();
+  out.connect(tapOut);
+
+  let pedals = []; // [{ uid, node, tap }]
   function setChain(chain) {
     pedals.forEach((p) => p.node.dispose());
-    input.disconnect(); input.connect(analyserIn);
-    pedals = chain.map((c) => ({ uid: c.uid, node: wrap(c.type) }));
+    input.disconnect(); input.connect(analyserIn); input.connect(tapIn);
+    pedals = chain.map((c) => ({ uid: c.uid, node: wrap(c.type), tap: mkTap() }));
     let last = input;
-    for (const p of pedals) { last.connect(p.node.input); last = p.node.output; }
+    for (const p of pedals) { last.connect(p.node.input); last = p.node.output; last.connect(p.tap); }
     last.connect(amp.input);
     chain.forEach((c, i) => pedals[i].node.update(c.params, c.on));
   }
@@ -338,6 +343,13 @@ function createGuitarRig(ctx, destination = ctx.destination) {
 
   return {
     input, analyserIn, analyserOut, setChain, updatePedal,
+    // Analysers before/after a stage: 'all' (whole board), a pedal uid, or 'amp'.
+    taps(which) {
+      const i = pedals.findIndex((p) => p.uid === which);
+      if (i >= 0) return [i === 0 ? tapIn : pedals[i - 1].tap, pedals[i].tap];
+      if (which === 'amp') return [pedals.length ? pedals[pedals.length - 1].tap : tapIn, tapOut];
+      return [tapIn, tapOut];
+    },
     setAmp: (p) => amp.update(p),
     setInputGain: (v) => at(input.gain, v),
     setMuted: (m) => at(out.gain, m ? 0 : 1),

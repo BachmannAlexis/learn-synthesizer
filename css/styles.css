@@ -446,6 +446,18 @@ kbd {
 .gp-chip { padding: 3px 8px; border-radius: 12px; border: 1px solid #000; background: var(--body, var(--surface-2)); color: #fbf4e6; font-weight: 600; }
 .gp-chip.off { opacity: 0.4; text-decoration: line-through; }
 .gp-chip.io { background: var(--surface-2); color: var(--muted); border-color: var(--line); font: 600 11px ui-monospace, Menlo, monospace; }
+button.gp-chip { cursor: pointer; padding: 4px 10px; min-height: 28px; font-size: 12px; }
+button.gp-chip[aria-pressed="true"] { outline: 2px solid var(--trace); outline-offset: 2px; }
+button.gp-chip:hover { filter: brightness(1.15); }
+.gp-compare-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+.gp-compare-head h2 { margin: 0; }
+.gp-compare-what { margin: 0; color: var(--text); font-weight: 600; }
+.gp-levels { margin: 0 0 0 auto; font: 13px ui-monospace, Menlo, monospace; color: var(--trace); }
+.gp-legend { display: flex; gap: 16px; margin: 6px 0 10px; font-size: 12px; color: var(--muted); }
+.gp-legend span::before { content: ""; display: inline-block; width: 18px; height: 3px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
+.gp-legend .before::before { background: var(--muted); }
+.gp-legend .after::before { background: var(--accent); }
+.gp-compare-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 .gp-chain { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 12px; align-items: start; }
 .gp-pedals { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
 .gp-empty { margin: 0; padding: 24px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; grid-column: 1 / -1; }

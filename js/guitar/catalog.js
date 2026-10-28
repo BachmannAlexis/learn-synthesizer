@@ -74,7 +74,7 @@ const GP_PEDALS = {
     name: GP_L('Distortion', 'Distorsion'),
     blurb: GP_L('Hard clipping: tight, aggressive rock and metal crunch.', 'Écrêtage dur : le crunch serré et agressif du rock et du metal.'),
     params: [
-      knob('drive', 'Distortion', 'Distorsion', 1, 200, 40, { curve: 'log', fmt: 'x' }),
+      knob('drive', 'Drive', 'Gain', 1, 200, 40, { curve: 'log', fmt: 'x' }),
       knob('tone', 'Filter', 'Filtre', 600, 10000, 3500, { curve: 'log', fmt: 'hz' }),
       knob('level', 'Level', 'Niveau', -12, 12, -2, { fmt: 'db' }),
     ],
@@ -308,6 +308,9 @@ const GP_TEXT = {
     gpPlotLfo: 'How the effect moves over time with the current Rate and Depth.', gpPlotImpulse: 'Impulse response: what comes out after a single click.',
     gpVoice: 'Keyboard & riffs play', gpVoiceStrings: 'Plucked strings', gpVoiceMoog: 'Moog synth', gpMoogSound: 'Moog sound',
     gpMoogHint: 'The Moog synth goes through your pedalboard instead of a guitar. Riffs play one note at a time (the synth is monophonic).',
+    gpCompare: 'Before & after', gpCompareHint: 'Click a pedal in the signal chain above to see what that one pedal does to the sound. IN or OUT compares the whole board.',
+    gpBefore: 'before', gpAfter: 'after', gpWave: 'Waveform', gpWaveSub: 'shape over time', gpChange: 'What changed', gpChangeSub: 'after − before, per frequency',
+    gpComparing: 'Comparing: {what}', gpWhole: 'the whole board (input → output)', gpCompareIdle: 'Play something to compare', gpLevels: 'Level {a} dB → {b} dB ({d} dB)', gpPickChip: 'Compare before and after {name}', gpBypassed: '(switched off)',
   },
   fr: {
     modePedals: 'Pédales',
@@ -334,6 +337,9 @@ const GP_TEXT = {
     gpPlotLfo: 'Comment l\'effet bouge dans le temps avec la vitesse et la profondeur actuelles.', gpPlotImpulse: 'Réponse impulsionnelle : ce qui sort après un seul clic.',
     gpVoice: 'Le clavier et les riffs jouent', gpVoiceStrings: 'Cordes pincées', gpVoiceMoog: 'Synthé Moog', gpMoogSound: 'Son Moog',
     gpMoogHint: 'Le synthé Moog passe dans votre pédalier à la place d\'une guitare. Les riffs jouent une note à la fois (le synthé est monophonique).',
+    gpCompare: 'Avant / après', gpCompareHint: 'Cliquez une pédale dans la chaîne ci-dessus pour voir ce que cette seule pédale fait au son. ENTRÉE ou SORTIE compare tout le pédalier.',
+    gpBefore: 'avant', gpAfter: 'après', gpWave: 'Forme d\'onde', gpWaveSub: 'forme dans le temps', gpChange: 'Ce qui a changé', gpChangeSub: 'après − avant, par fréquence',
+    gpComparing: 'Comparaison : {what}', gpWhole: 'tout le pédalier (entrée → sortie)', gpCompareIdle: 'Jouez quelque chose pour comparer', gpLevels: 'Niveau {a} dB → {b} dB ({d} dB)', gpPickChip: 'Comparer avant et après {name}', gpBypassed: '(éteinte)',
   },
 };
 
